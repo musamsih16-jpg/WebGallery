@@ -2,10 +2,10 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Suno Global Canvas (Mobile Pro)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"> 
+<title>Suno Global Canvas (Mobile Pro 2.0)</title>
 <style>
-/* --- 1. СТИЛЬ IbisPaint X (ТЕМНЫЙ, СОВРЕМЕННЫЙ) --- */
+/* --- 1. СТИЛЬ IbisPaint X (ОПТИМИЗИРОВАННЫЙ) --- */
 :root {
   --main-bg: #121212;
   --top-bar-bg: #222222;
@@ -21,7 +21,10 @@ body {
   background: var(--main-bg);
   color: var(--text-color);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  overflow-y: auto;
+  overflow-y: auto; 
+  /* УЛЬТРА-ОПТИМИЗАЦИЯ: Отключение теней/анимаций, которые могут замедлять работу */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Верхняя панель управления */
@@ -46,8 +49,8 @@ button, input:not([type=range]) {
   color: var(--text-color);
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  padding: 10px 14px;
-  font-size: 15px;
+  padding: 10px 12px; /* Немного уменьшен для компактности */
+  font-size: 14px;
   cursor: pointer;
   transition: 0.2s;
   flex-shrink: 0;
@@ -55,13 +58,13 @@ button, input:not([type=range]) {
 button:hover { background: #4a4a4a; border-color: var(--accent-color); }
 .danger-btn { border-color: var(--danger-color) !important; color: var(--danger-color) !important; }
 
-/* Ползунки: ФИКС ДЛЯ СКРОЛЛА */
+/* Ползунки: ФИКС ДЛЯ СКРОЛЛА (Range) */
 input[type=range] {
   -webkit-appearance: none;
   background: var(--border-color);
   height: 8px;
   border-radius: 4px;
-  touch-action: none;
+  /* touch-action: none; - Убрано, чтобы довериться JS-фиксам */
 }
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -79,7 +82,7 @@ input[type=range]::-webkit-slider-thumb {
   margin-right: 10px;
 }
 .control-group label { font-size: 13px; color: #aaa; }
-.control-group input[type=number] { width: 60px; text-align: center; padding: 5px; }
+.control-group input[type=number] { width: 50px; text-align: center; padding: 5px; }
 
 
 /* --- 2. ЦЕНТРАЛЬНАЯ ОБЛАСТЬ И ХОЛСТ --- */
@@ -89,7 +92,7 @@ input[type=range]::-webkit-slider-thumb {
     padding: 20px;
     min-height: calc(100vh - 70px);
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: hidden; /* Должен быть, чтобы не было двух полос прокрутки */
 }
 
 canvas {
@@ -98,6 +101,10 @@ canvas {
   border-radius: 8px;
   box-shadow: 0 0 20px rgba(0, 140, 255, 0.2);
   background: #fff;
+  /* КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: Отключаем выделение текста,
+     чтобы не мешало жестам */
+  user-select: none;
+  -webkit-user-select: none; 
 }
 
 
@@ -119,55 +126,25 @@ canvas {
 
 .rgb-slider-group { display: flex; flex-direction: column; gap: 5px; }
 .rgb-slider-group label { font-size: 14px; display: flex; justify-content: space-between; }
-#r { background: linear-gradient(to right, black, red); }
-#g { background: linear-gradient(to right, black, green); }
-#b { background: linear-gradient(to right, black, blue); }
 
 
-/* --- 4. МОДАЛЬНОЕ ОКНО ЯЗЫКА (НОВЫЙ БЛОК) --- */
-#language-modal {
+/* --- 4. МОДАЛЬНОЕ ОКНО ЯЗЫКА И ГАЛЕРЕЯ (ОПТИМИЗАЦИЯ) --- */
+#language-modal, #gallery {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.8);
+    background: rgba(0,0,0,0.95);
     display: none;
     justify-content: center;
     align-items: center;
     z-index: 3000;
+    transition: opacity 0.3s; /* Добавлено для плавности, но без лишней нагрузки */
 }
 #language-content {
     background: var(--control-bg);
     padding: 25px;
     border-radius: 10px;
     width: 300px;
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
-}
-.lang-btn {
-    display: block;
-    width: 100%;
-    margin: 8px 0;
-    text-align: left;
-    background: var(--top-bar-bg);
-    border: 1px solid var(--border-color);
-    padding: 12px;
-    transition: background 0.2s;
-}
-.lang-btn:hover {
-    background: #4a4a4a;
-}
-.lang-btn.active {
-    border-color: var(--accent-color);
-    box-shadow: 0 0 5px var(--accent-color);
-    font-weight: bold;
-}
-
-/* --- 5. ГАЛЕРЕЯ --- */
-#gallery { 
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.95); 
-  padding: 10px; 
-  display: none; 
-  flex-direction: column;
-  overflow-y: auto; 
-  z-index: 2000;
+    max-height: 80vh;
+    overflow-y: auto;
 }
 .gallery-header { padding: 10px 0; }
 .gallery-item img { height: 100px; }
@@ -299,10 +276,9 @@ canvas {
 
   window.drawing = false;
   window.mode = "draw";
-  window.isTwoFingerGesture = false;
+  window.isOneFingerDrawing = false; // НОВЫЙ ФЛАГ для точного контроля жестов
 
-
-  // --- I18N: СЛОВАРЬ ПЕРЕВОДОВ (НОВЫЙ БЛОК) ---
+  // --- I18N: СЛОВАРЬ ПЕРЕВОДОВ (Обновлен) ---
   const translations = {
       // Ключ: { ru: 'Русский', en: 'English', az: 'Azərbaycan dili', ... }
       'btn_tools': {'ru': '⚙️ Инструменты', 'en': '⚙️ Tools', 'az': '⚙️ Alətlər', 'tr': '⚙️ Araçlar', 'zh': '⚙️ 工具', 'es': '⚙️ Herramientas', 'fr': '⚙️ Outils'},
@@ -319,7 +295,7 @@ canvas {
       'lbl_red': {'ru': 'Красный (R):', 'en': 'Red (R):', 'az': 'Qırmızı (R):', 'tr': 'Kırmızı (R):', 'zh': '红色 (R):', 'es': 'Rojo (R):', 'fr': 'Rouge (R):'},
       'lbl_green': {'ru': 'Зеленый (G):', 'en': 'Green (G):', 'az': 'Yaşıl (G):', 'tr': 'Yeşil (G):', 'zh': '绿色 (G):', 'es': 'Verde (G):', 'fr': 'Vert (G):'},
       'lbl_blue': {'ru': 'Синий (B):', 'en': 'Blue (B):', 'az': 'Mavi (B):', 'tr': 'Mavi (B):', 'zh': '蓝色 (B):', 'es': 'Azul (B):', 'fr': 'Bleu (B):'},
-      'lbl_brush_size': {'ru': 'Размер кисти:', 'en': 'Brush Size:', 'az': 'Fırça Ölçüsü:', 'tr': 'Fırça Boyutu:', 'zh': '画笔大小:', 'es': 'Tamaño del Pincel:', 'fr': 'Taille du Pinceau:'},
+      'lbl_brush_size': {'ru': 'Размер кисти:', 'en': 'Brush Size:', 'az': 'Fırça Ölçüsü:', 'tr': 'Fırça Boyutu:', 'zh': '画笔大小:', 'es': 'Tamaño del Pincel:', 'fr': 'Taille du Pincel:'},
       
       'h2_gallery_title': {'ru': '🌍 Рисунки игроков', 'en': '🌍 Player Drawings', 'az': '🌍 Oyunçu Rəsmləri', 'tr': '🌍 Oyuncu Çizimleri', 'zh': '🌍 玩家画作', 'es': '🌍 Dibujos de Jugadores', 'fr': '🌍 Dessins des Joueurs'},
       'btn_gallery_close': {'ru': '❌ Закрыть', 'en': '❌ Close', 'az': '❌ Bağla', 'tr': '❌ Kapat', 'zh': '❌ 关闭', 'es': '❌ Cerrar', 'fr': '❌ Fermer'},
@@ -345,19 +321,15 @@ canvas {
   window.getTranslation = (key, ...args) => {
       const translation = translations[key];
       if (translation && translation[currentLang]) {
-          // Если это функция (для сообщений с переменными)
           if (typeof translation[currentLang] === 'function') {
               return translation[currentLang](...args);
           }
           return translation[currentLang];
       }
-      // Возвращаем ключ или русский (по умолчанию)
       return translations[key] ? translations[key]['ru'] : key; 
   };
   
-  // Функция применения языка к элементам
   window.applyLanguage = () => {
-      // 1. Перевод кнопок в верхней панели
       document.getElementById('btn_tools').textContent = window.getTranslation('btn_tools');
       document.getElementById('btn_color').textContent = window.getTranslation('btn_color');
       document.getElementById('btn_gallery').textContent = window.getTranslation('btn_gallery');
@@ -368,24 +340,40 @@ canvas {
       document.getElementById('lbl_width').textContent = window.getTranslation('lbl_width');
       document.getElementById('lbl_height').textContent = window.getTranslation('lbl_height');
       
-      // 2. Перевод боковой панели
       document.getElementById('h3_color_panel').textContent = window.getTranslation('h3_color_panel');
       document.getElementById('lbl_red').textContent = window.getTranslation('lbl_red');
       document.getElementById('lbl_green').textContent = window.getTranslation('lbl_green');
       document.getElementById('lbl_blue').textContent = window.getTranslation('lbl_blue');
       document.getElementById('lbl_brush_size').textContent = window.getTranslation('lbl_brush_size');
 
-      // 3. Перевод галереи
       document.getElementById('h2_gallery_title').textContent = window.getTranslation('h2_gallery_title');
       document.getElementById('btn_gallery_close').textContent = window.getTranslation('btn_gallery_close');
       
-      // 4. Перевод модального окна языка
       document.getElementById('h3_select_lang').textContent = window.getTranslation('h3_select_lang');
 
-      // 5. Выделение активной кнопки языка
       document.querySelectorAll('.lang-btn').forEach(btn => {
           btn.classList.remove('active');
           if (btn.getAttribute('data-lang') === currentLang) {
               btn.classList.add('active');
           }
+      });
+  };
+
+  window.setLanguage = (lang) => {
+      currentLang = lang;
+      localStorage.setItem('suno_lang', lang);
+      window.applyLanguage();
+      window.toggleLanguageModal();
+  };
   
+  window.toggleLanguageModal = () => {
+      const modal = document.getElementById('language-modal');
+      modal.style.display = (getComputedStyle(modal).display === "flex") ? "none" : "flex";
+  };
+
+
+  // --- 1. ФУНКЦИИ УПРАВЛЕНИЯ UI ---
+
+  window.toggleToolsPanel = () => {
+      document.getElementById("tools").style.display = 
+        (getComputedSt
