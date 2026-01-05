@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Suno Global Canvas (Touch Fixed)</title>
+<title>Suno Global Canvas (Final)</title>
 <style>
 :root {
   --main-bg: #121212;
@@ -14,28 +14,23 @@
 }
 
 body {
-  margin: 0;
-  padding: 0;
+  margin: 0; padding: 0;
   background: var(--main-bg);
   color: var(--text-color);
   font-family: sans-serif;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
+  display: flex; flex-direction: column;
+  height: 100vh; overflow: hidden;
 }
 
-/* --- ВЕРХНЯЯ ПАНЕЛЬ (ТЕПЕРЬ ФИКСИРОВАННАЯ В ПОТОКЕ) --- */
+/* МЕНЮ */
 #top {
   background: var(--top-bar-bg);
   padding: 10px;
-  display: flex;
-  gap: 10px;
+  display: flex; gap: 8px;
   align-items: center;
   border-bottom: 2px solid #444;
   overflow-x: auto;
-  white-space: nowrap;
-  flex-shrink: 0; /* Не дает меню сжиматься */
+  flex-shrink: 0;
   z-index: 9999;
 }
 
@@ -44,74 +39,77 @@ button {
   color: #fff;
   border: 1px solid #555;
   border-radius: 6px;
-  padding: 12px 16px; /* Увеличил область нажатия */
-  font-size: 16px;
+  padding: 10px 14px;
+  font-size: 14px;
+  white-space: nowrap;
   cursor: pointer;
-  -webkit-appearance: none; /* Убирает системные стили iOS */
 }
 
-button:active {
-  background: var(--accent-color);
-}
+button:active { background: var(--accent-color); }
 
-/* --- КОНТЕЙНЕР ХОЛСТА --- */
+/* ХОЛСТ */
 #viewport {
-  flex-grow: 1; /* Занимает все оставшееся место */
+  flex-grow: 1;
   position: relative;
   background: #1a1a1a;
   overflow: hidden;
-  touch-action: none; /* Только здесь блокируем жесты браузера */
+  touch-action: none;
 }
 
 canvas {
   position: absolute;
   background: #fff;
   transform-origin: 0 0;
-  box-shadow: 0 0 20px rgba(0,0,0,0.5);
 }
 
-/* --- ПАНЕЛИ --- */
+/* ПАНЕЛИ */
 #tools, #color-panel {
   position: fixed;
-  top: 80px;
-  background: rgba(40, 40, 40, 0.95);
+  top: 75px;
+  background: rgba(35, 35, 35, 0.95);
   border: 1px solid #555;
   border-radius: 8px;
-  padding: 15px;
+  padding: 12px;
   display: none;
   z-index: 10000;
   flex-direction: column;
-  gap: 15px;
+  gap: 12px;
 }
-
 #tools { left: 10px; }
-#color-panel { right: 10px; width: 220px; }
+#color-panel { right: 10px; width: 200px; }
 
-input[type=range] {
-  width: 100%;
-  height: 25px;
-}
+input[type=range] { width: 100%; height: 20px; }
 
+/* ГАЛЕРЕЯ */
 #gallery {
-  position: fixed;
-  inset: 0;
+  position: fixed; inset: 0;
   background: #000;
   z-index: 20000;
   display: none;
   flex-direction: column;
-  padding: 20px;
+  padding: 15px;
   overflow-y: auto;
 }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 15px;
+}
+.card { background: #222; padding: 8px; border-radius: 8px; text-align: center; }
+.card img { width: 100%; height: 100px; object-fit: contain; background: #000; }
 </style>
 </head>
 <body>
 
 <div id="top">
-  <button onclick="toggleElement('tools')">🛠 Инстр.</button>
-  <button onclick="toggleElement('color-panel')">🎨 Цвет</button>
-  <button onclick="toggleElement('gallery')">🌍 Гал.</button>
+  <button onclick="toggleEl('tools')">🛠</button>
+  <button onclick="toggleEl('color-panel')">🎨</button>
+  <button onclick="toggleEl('gallery')">🌍 Глобально</button>
   <button onclick="resetView()">🎯 Центр</button>
-  <button onclick="clearCanvas()" style="color:red">🗑 Стереть</button>
+  <button onclick="saveToCloud()" style="border-color: #008cff;">☁️ Запустить глобально</button>
+  <button onclick="downloadImg()">💾 Сохранить устройство</button>
+  <button onclick="clearCanvas()" style="color:red">🗑</button>
 </div>
 
 <div id="tools">
@@ -123,23 +121,101 @@ input[type=range] {
 <div id="color-panel">
     <label>Размер: <span id="sz_val">5</span></label>
     <input type="range" id="size" min="1" max="100" value="5" oninput="document.getElementById('sz_val').innerText=this.value">
-    <label>Цвет (RGB):</label>
+    <label>Цвет:</label>
     <input type="range" id="r" max="255" value="0">
     <input type="range" id="g" max="255" value="0">
     <input type="range" id="b" max="255" value="0">
 </div>
 
-<div id="viewport" id="v">
+<div id="viewport">
     <canvas id="canvas" width="720" height="1280"></canvas>
 </div>
 
 <div id="gallery">
-    <button onclick="toggleElement('gallery')" style="margin-bottom:20px">❌ Закрыть</button>
-    <div id="galleryContent">Тут будут рисунки...</div>
+    <button onclick="toggleEl('gallery')">❌ Закрыть галерею</button>
+    <div id="galleryContent" class="grid">Загрузка...</div>
 </div>
 
+<script type="module">
+// --- FIREBASE И ЛОГИКА ЖАЛОБ ---
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, doc, updateDoc, increment, deleteDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyCekB6vZ6qGAnvDO1LOA7OUGmA3zU1aLoA",
+    authDomain: "suno-gallery.firebaseapp.com",
+    projectId: "suno-gallery",
+    storageBucket: "suno-gallery.firebasestorage.app",
+    messagingSenderId: "314284584278",
+    appId: "1:314284584278:web:97c5b91180562fd1c93af7"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const galleryRef = collection(db, "drawings");
+
+// Уникальный ID пользователя для блокировки повторных жалоб
+let USER_ID = localStorage.getItem("art_uid") || 'u' + Math.random().toString(36).substr(2, 9);
+localStorage.setItem("art_uid", USER_ID);
+
+window.saveToCloud = async () => {
+    if(!confirm("Опубликовать рисунок в глобальную галерею?")) return;
+    try {
+        await addDoc(galleryRef, {
+            image: canvas.toDataURL('image/jpeg', 0.5),
+            date: Date.now(),
+            reports: 0,
+            reporters: [] // Список ID тех, кто пожаловался
+        });
+        alert("Опубликовано!");
+    } catch(e) { alert("Ошибка: " + e.message); }
+};
+
+window.loadGallery = async () => {
+    const cont = document.getElementById("galleryContent");
+    cont.innerHTML = "Загрузка...";
+    const q = query(galleryRef, orderBy("date", "desc"), limit(24));
+    const snap = await getDocs(q);
+    cont.innerHTML = "";
+    snap.forEach(d => {
+        const item = d.data();
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+            <img src="${item.image}">
+            <button id="rep-${d.id}" style="font-size:10px; margin-top:5px; background:#444">Report (${item.reports||0})</button>
+        `;
+        
+        const btn = card.querySelector("button");
+        btn.onclick = async () => {
+            if(item.reporters && item.reporters.includes(USER_ID)) {
+                alert("Вы уже жаловались на этот рисунок.");
+                return;
+            }
+            if(!confirm("Пожаловаться на содержание?")) return;
+            
+            const docRef = doc(db, "drawings", d.id);
+            const newReports = (item.reports || 0) + 1;
+            
+            if(newReports >= 5) {
+                await deleteDoc(docRef);
+                card.remove();
+            } else {
+                await updateDoc(docRef, {
+                    reports: increment(1),
+                    reporters: arrayUnion(USER_ID)
+                });
+                btn.innerText = `Reported`;
+                btn.disabled = true;
+            }
+        };
+        cont.appendChild(card);
+    });
+};
+</script>
+
 <script>
-// --- БАЗОВАЯ ЛОГИКА ---
+// --- ОСНОВНОЙ ДВИЖЕК ---
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const viewport = document.getElementById('viewport');
@@ -148,26 +224,30 @@ let scale = 1, pX = 0, pY = 0;
 let isDrawing = false, mode = 'draw';
 let lastX = 0, lastY = 0;
 
-// Функции UI
-function toggleElement(id) {
+function toggleEl(id) {
     const el = document.getElementById(id);
     el.style.display = (el.style.display === 'flex') ? 'none' : 'flex';
+    if(id === 'gallery' && el.style.display === 'flex') window.loadGallery();
 }
 
-function setMode(m) {
-    mode = m;
-    toggleElement('tools');
-}
+function setMode(m) { mode = m; toggleEl('tools'); }
 
 function clearCanvas() {
     ctx.fillStyle = "#fff";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 }
 
+function downloadImg() {
+    const link = document.createElement('a');
+    link.download = 'my-art.png';
+    link.href = canvas.toDataURL();
+    link.click();
+}
+
 function resetView() {
-    scale = 0.5;
+    scale = 0.4;
     pX = (viewport.clientWidth - canvas.width * scale) / 2;
-    pY = 20;
+    pY = 40;
     updateTransform();
 }
 
@@ -175,7 +255,6 @@ function updateTransform() {
     canvas.style.transform = `translate(${pX}px, ${pY}px) scale(${scale})`;
 }
 
-// --- РИСОВАНИЕ И ЖЕСТЫ ---
 function getPos(e) {
     const rect = viewport.getBoundingClientRect();
     const t = e.touches ? e.touches[0] : e;
@@ -219,7 +298,7 @@ viewport.addEventListener('touchmove', e => {
         ctx.globalCompositeOperation = (mode === 'erase') ? 'destination-out' : 'source-over';
         ctx.strokeStyle = `rgb(${document.getElementById('r').value},${document.getElementById('g').value},${document.getElementById('b').value})`;
         ctx.lineWidth = document.getElementById('size').value;
-        ctx.lineCap = 'round';
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
         ctx.moveTo(lastX, lastY);
         ctx.lineTo(p.x, p.y);
         ctx.stroke();
@@ -229,10 +308,8 @@ viewport.addEventListener('touchmove', e => {
 
 window.addEventListener('touchend', () => isDrawing = false);
 
-// Инициализация
 clearCanvas();
-setTimeout(resetView, 100);
+setTimeout(resetView, 200);
 </script>
-
 </body>
 </html>
