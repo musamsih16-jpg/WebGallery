@@ -2,10 +2,10 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"> 
-<title>Suno Global Canvas (Mobile Pro 2.1)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Suno Global Canvas (Mobile Pro 2.2)</title>
 <style>
-/* --- 1. СТИЛЬ IbisPaint X (ОПТИМИЗИРОВАННЫЙ) --- */
+/* --- 1. СТИЛЬ IbisPaint X (ТЕМНЫЙ, СОВРЕМЕННЫЙ) --- */
 :root {
   --main-bg: #121212;
   --top-bar-bg: #222222;
@@ -22,14 +22,13 @@ body {
   color: var(--text-color);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   overflow-y: auto; 
-  -webkit-tap-highlight-color: transparent;
-  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent; /* Оптимизация для мобильных */
 }
 
 /* Верхняя панель управления */
 #top {
   background: var(--top-bar-bg);
-  padding: 8px;
+  padding: 8px; 
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -48,8 +47,8 @@ button, input:not([type=range]) {
   color: var(--text-color);
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  padding: 10px 12px;
-  font-size: 14px;
+  padding: 10px 14px;
+  font-size: 15px;
   cursor: pointer;
   transition: 0.2s;
   flex-shrink: 0;
@@ -57,12 +56,13 @@ button, input:not([type=range]) {
 button:hover { background: #4a4a4a; border-color: var(--accent-color); }
 .danger-btn { border-color: var(--danger-color) !important; color: var(--danger-color) !important; }
 
-/* Ползунки: ФИКС ДЛЯ СКРОЛЛА (Range) */
+/* Ползунки: ФИКС ДЛЯ СКРОЛЛА */
 input[type=range] {
   -webkit-appearance: none;
   background: var(--border-color);
   height: 8px;
   border-radius: 4px;
+  /* УДАЛЕНО: touch-action: none; - Теперь управляем в JS */
 }
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -80,7 +80,7 @@ input[type=range]::-webkit-slider-thumb {
   margin-right: 10px;
 }
 .control-group label { font-size: 13px; color: #aaa; }
-.control-group input[type=number] { width: 50px; text-align: center; padding: 5px; }
+.control-group input[type=number] { width: 60px; text-align: center; padding: 5px; }
 
 
 /* --- 2. ЦЕНТРАЛЬНАЯ ОБЛАСТЬ И ХОЛСТ --- */
@@ -90,7 +90,7 @@ input[type=range]::-webkit-slider-thumb {
     padding: 20px;
     min-height: calc(100vh - 70px);
     box-sizing: border-box;
-    overflow: hidden; 
+    overflow: hidden; /* Скрываем полосы прокрутки для главной области */
 }
 
 canvas {
@@ -99,54 +99,76 @@ canvas {
   border-radius: 8px;
   box-shadow: 0 0 20px rgba(0, 140, 255, 0.2);
   background: #fff;
+  /* КРИТИЧЕСКИЙ ФИКС: отключаем выделение, но разрешаем скролл браузера по умолчанию */
   user-select: none;
-  -webkit-user-select: none; 
+  -webkit-user-select: none;
+  touch-action: pan-y; /* Разрешает вертикальный скролл браузера по умолчанию */
 }
 
 
 /* --- 3. ИНСТРУМЕНТЫ И ЦВЕТА --- */
 #tools {
-  position: fixed; left: 0; top: 60px; width: 55px; background: var(--control-bg); padding: 10px 0;
-  border-right: 1px solid var(--border-color); 
-  display: flex; /* КРИТИЧЕСКИЙ ФИКС: Показываем панель инструментов по умолчанию */
-  flex-direction: column; gap: 20px;
-  align-items: center; z-index: 50; height: calc(100vh - 60px);
+  position: fixed;
+  left: 0;
+  top: 60px; 
+  width: 55px; 
+  background: var(--control-bg);
+  padding: 10px 0;
+  border-right: 1px solid var(--border-color);
+  display: none; /* Скрыто по умолчанию */
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+  z-index: 50;
+  height: calc(100vh - 60px);
 }
-.tool-button { padding: 10px; font-size: 28px; }
-.tool-button.active { color: var(--accent-color); text-shadow: 0 0 5px var(--accent-color); }
+
+.tool-button {
+  padding: 10px;
+  font-size: 28px;
+}
+.tool-button.active {
+    color: var(--accent-color);
+    text-shadow: 0 0 5px var(--accent-color);
+}
 
 #color-panel {
-    display: none; /* КРИТИЧЕСКИЙ ФИКС: Скрываем по умолчанию */
-    position: fixed; right: 0; top: 60px; width: 220px; background: var(--control-bg);
-    padding: 15px; border-left: 1px solid var(--border-color); flex-direction: column; gap: 12px;
-    z-index: 50; height: calc(100vh - 60px); overflow-y: auto;
+    display: none;
+    position: fixed;
+    right: 0;
+    top: 60px;
+    width: 220px; 
+    background: var(--control-bg);
+    padding: 15px;
+    border-left: 1px solid var(--border-color);
+    flex-direction: column;
+    gap: 12px;
+    z-index: 50;
+    height: calc(100vh - 60px);
+    overflow-y: auto;
 }
-#colorPreview { width: 100%; height: 50px; border-radius: 6px; border: 2px solid var(--text-color); }
+#colorPreview { width: 100%; height: 50px; border-radius: 6px; border: 2px solid var(--text-color); background: rgb(0,0,0); }
 
 .rgb-slider-group { display: flex; flex-direction: column; gap: 5px; }
 .rgb-slider-group label { font-size: 14px; display: flex; justify-content: space-between; }
 
 
-/* --- 4. МОДАЛЬНОЕ ОКНО ЯЗЫКА И ГАЛЕРЕЯ --- */
-#language-modal, #gallery {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.95);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 3000;
-    transition: opacity 0.3s;
+/* --- 4. ГАЛЕРЕЯ --- */
+#gallery { 
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.95); 
+  padding: 10px; 
+  display: none; 
+  flex-direction: column;
+  overflow-y: auto; 
+  z-index: 2000;
 }
-#language-content {
-    background: var(--control-bg);
-    padding: 25px;
-    border-radius: 10px;
-    width: 300px;
-    max-height: 80vh;
-    overflow-y: auto;
+.gallery-header { 
+    padding: 10px 0;
 }
-.gallery-header { padding: 10px 0; }
-.gallery-item img { height: 100px; }
+.gallery-item img { 
+    height: 100px;
+}
 
 #loader { color: #0f0; font-weight: bold; margin-left: 10px; display: none; }
 </style>
@@ -154,54 +176,52 @@ canvas {
 <body>
 
 <div id="top">
-  <button id="btn_tools" onclick="window.toggleToolsPanel()">⚙️ Инструменты</button>
-  <button id="btn_color" onclick="window.toggleColorPanel()">🌈 Цвет/Размер</button>
-  <button id="btn_gallery" onclick="window.toggleGallery()">🌍 Глобальная Галерея</button>
-  <button id="btn_lang" onclick="window.toggleLanguageModal()">🌐 Язык</button> 
-  
-  <button id="btn_global_save" onclick="window.saveToFirebase()" style="border-color: var(--danger-color); color: var(--danger-color);">☁️ В Глобал!</button>
-  <button id="btn_download" onclick="window.downloadCanvas()">💾 Скачать на устройство</button>
-  <button id="btn_clear" onclick="window.clearCanvas()" class="danger-btn">🗑 Стереть</button>
+  <button onclick="window.toggleToolsPanel()">⚙️ Инструменты</button>
+  <button onclick="window.toggleColorPanel()">🌈 Цвет/Размер</button>
+  <button onclick="window.toggleGallery()">🌍 Глобальная Галерея</button>
+  <button onclick="window.saveToFirebase()" style="border-color: var(--danger-color); color: var(--danger-color);">☁️ В Глобал!</button>
+  <button onclick="window.downloadCanvas()">💾 Скачать на устройство</button>
+  <button onclick="window.clearCanvas()" class="danger-btn">🗑 Стереть</button>
   <span id="loader">Загрузка...</span>
 
     <div class="control-group">
-        <label id="lbl_width">Ширина:</label>
+        <label>Ширина:</label>
         <input type="number" id="canvasW" min="100" max="2000" value="360" onchange="window.resizeCanvas()">
     </div>
     <div class="control-group">
-        <label id="lbl_height">Высота:</label>
+        <label>Высота:</label>
         <input type="number" id="canvasH" min="100" max="2000" value="500" onchange="window.resizeCanvas()">
     </div>
 </div>
 
 <div id="tools">
-    <button class="tool-button active" onclick="window.setMode('draw', this)" title="Кисть">✏️</button>
-    <button class="tool-button" onclick="window.setMode('erase', this)" title="Ластик">🧽</button>
-    <button class="tool-button" onclick="window.setMode('fill', this)" title="Заливка">⬛</button>
+    <button class="tool-button active" onclick="window.setMode('draw', this)">✏️</button>
+    <button class="tool-button" onclick="window.setMode('erase', this)">🧽</button>
+    <button class="tool-button" onclick="window.setMode('fill', this)">⬛</button>
 </div>
 
 <div id="color-panel">
-    <h3 id="h3_color_panel">Панель цвета и размера</h3>
+    <h3>Панель цвета и размера</h3>
 
     <div id="colorPreview"></div>
     
     <div class="rgb-slider-group">
-        <label><span id="lbl_red">Красный (R):</span> <span id="r_val">0</span></label>
+        <label>Красный (R): <span id="r_val">0</span></label>
         <input type="range" id="r" min="0" max="255" value="0" oninput="window.updateColorPreview()">
     </div>
     <div class="rgb-slider-group">
-        <label><span id="lbl_green">Зеленый (G):</span> <span id="g_val">0</span></label>
+        <label>Зеленый (G): <span id="g_val">0</span></label>
         <input type="range" id="g" min="0" max="255" value="0" oninput="window.updateColorPreview()">
     </div>
     <div class="rgb-slider-group">
-        <label><span id="lbl_blue">Синий (B):</span> <span id="b_val">0</span></label>
+        <label>Синий (B): <span id="b_val">0</span></label>
         <input type="range" id="b" min="0" max="255" value="0" oninput="window.updateColorPreview()">
     </div>
     
     <hr style="border-color: #555; margin: 15px 0;">
 
     <div class="rgb-slider-group">
-        <label><span id="lbl_brush_size">Размер кисти:</span> <span id="size_val">5</span></label>
+        <label>Размер кисти: <span id="size_val">5</span></label>
         <input type="range" id="size" min="1" max="80" value="5" oninput="document.getElementById('size_val').textContent = this.value;">
     </div>
 </div>
@@ -213,32 +233,18 @@ canvas {
 
 <div id="gallery">
     <div class="gallery-header">
-        <h2 id="h2_gallery_title" style="margin:0;">🌍 Рисунки игроков</h2>
-        <button id="btn_gallery_close" onclick="window.toggleGallery()">❌ Закрыть</button>
+        <h2 style="margin:0;">🌍 Рисунки игроков</h2>
+        <button onclick="window.toggleGallery()">❌ Закрыть</button>
     </div>
     <div id="galleryContent" class="gallery-grid"></div>
 </div>
-
-<div id="language-modal">
-    <div id="language-content">
-        <h3 id="h3_select_lang">Выбрать язык</h3>
-        <button class="lang-btn" data-lang="ru" onclick="window.setLanguage('ru')">🇷🇺 Русский</button>
-        <button class="lang-btn" data-lang="en" onclick="window.setLanguage('en')">🇺🇸 English</button>
-        <button class="lang-btn" data-lang="az" onclick="window.setLanguage('az')">🇦🇿 Azərbaycan dili</button>
-        <button class="lang-btn" data-lang="tr" onclick="window.setLanguage('tr')">🇹🇷 Türkçe</button>
-        <button class="lang-btn" data-lang="zh" onclick="window.setLanguage('zh')">🇨🇳 中文 (Chinese)</button>
-        <button class="lang-btn" data-lang="es" onclick="window.setLanguage('es')">🇪🇸 Español</button>
-        <button class="lang-btn" data-lang="fr" onclick="window.setLanguage('fr')">🇫🇷 Français</button>
-    </div>
-</div>
-
 
 <script type="module">
   // Импортируем Firebase
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, doc, updateDoc, increment, deleteDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
   
-  // --- НАСТРОЙКИ FIREBASE ---
+  // --- ВАШИ НАСТРОЙКИ FIREBASE ---
   const firebaseConfig = {
     apiKey: "AIzaSyCekB6vZ6qGAnvDO1LOA7OUGmA3zU1aLoA",
     authDomain: "suno-gallery.firebaseapp.com",
@@ -250,7 +256,7 @@ canvas {
   };
   // -----------------------
 
-  // Инициализация Firebase
+  // Инициализация
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   const galleryRef = collection(db, "drawings"); 
@@ -275,109 +281,333 @@ canvas {
 
   window.drawing = false;
   window.mode = "draw";
-  window.isOneFingerDrawing = false; 
-
-  // --- I18N: СЛОВАРЬ ПЕРЕВОДОВ ---
-  const translations = {
-      'btn_tools': {'ru': '⚙️ Инструменты', 'en': '⚙️ Tools', 'az': '⚙️ Alətlər', 'tr': '⚙️ Araçlar', 'zh': '⚙️ 工具', 'es': '⚙️ Herramientas', 'fr': '⚙️ Outils'},
-      'btn_color': {'ru': '🌈 Цвет/Размер', 'en': '🌈 Color/Size', 'az': '🌈 Rəng/Ölçü', 'tr': '🌈 Renk/Boyut', 'zh': '🌈 颜色/尺寸', 'es': '🌈 Color/Tamaño', 'fr': '🌈 Couleur/Taille'},
-      'btn_gallery': {'ru': '🌍 Глобальная Галерея', 'en': '🌍 Global Gallery', 'az': '🌍 Qlobal Qalereya', 'tr': '🌍 Küresel Galeri', 'zh': '🌍 全球画廊', 'es': '🌍 Galería Global', 'fr': '🌍 Galerie Globale'},
-      'btn_lang': {'ru': '🌐 Язык', 'en': '🌐 Language', 'az': '🌐 Dil', 'tr': '🌐 Dil', 'zh': '🌐 语言', 'es': '🌐 Idioma', 'fr': '🌐 Langue'},
-      'btn_global_save': {'ru': '☁️ В Глобал!', 'en': '☁️ To Global!', 'az': '☁️ Qlobal Yüklə!', 'tr': '☁️ Global Kaydet!', 'zh': '☁️ 上传!', 'es': '☁️ ¡A Global!','fr': '☁️ Publier !'},
-      'btn_download': {'ru': '💾 Скачать на устройство', 'en': '💾 Download', 'az': '💾 Cihaza Yüklə', 'tr': '💾 Cihaza İndir', 'zh': '💾 下载', 'es': '💾 Descargar', 'fr': '💾 Télécharger'},
-      'btn_clear': {'ru': '🗑 Стереть', 'en': '🗑 Clear', 'az': '🗑 Təmizlə', 'tr': '🗑 Sil', 'zh': '🗑 清除', 'es': '🗑 Borrar', 'fr': '🗑 Effacer'},
-      'lbl_width': {'ru': 'Ширина:', 'en': 'Width:', 'az': 'Eni:', 'tr': 'Genişlik:', 'zh': '宽度:', 'es': 'Ancho:', 'fr': 'Largeur:'},
-      'lbl_height': {'ru': 'Высота:', 'en': 'Height:', 'az': 'Hündürlüyü:', 'tr': 'Yükseklik:', 'zh': '高度:', 'es': 'Alto:', 'fr': 'Hauteur:'},
-      'h3_color_panel': {'ru': 'Панель цвета и размера', 'en': 'Color and Size Panel', 'az': 'Rəng və Ölçü Paneli', 'tr': 'Renk ve Boyut Paneli', 'zh': '颜色和尺寸', 'es': 'Panel de Color y Tamaño', 'fr': 'Panneau Couleur/Taille'},
-      'lbl_red': {'ru': 'Красный (R):', 'en': 'Red (R):', 'az': 'Qırmızı (R):', 'tr': 'Kırmızı (R):', 'zh': '红色 (R):', 'es': 'Rojo (R):', 'fr': 'Rouge (R):'},
-      'lbl_green': {'ru': 'Зеленый (G):', 'en': 'Green (G):', 'az': 'Yaşıl (G):', 'tr': 'Yeşil (G):', 'zh': '绿色 (G):', 'es': 'Verde (G):', 'fr': 'Vert (G):'},
-      'lbl_blue': {'ru': 'Синий (B):', 'en': 'Blue (B):', 'az': 'Mavi (B):', 'tr': 'Mavi (B):', 'zh': '蓝色 (B):', 'es': 'Azul (B):', 'fr': 'Bleu (B):'},
-      'lbl_brush_size': {'ru': 'Размер кисти:', 'en': 'Brush Size:', 'az': 'Fırça Ölçüsü:', 'tr': 'Fırça Boyutu:', 'zh': '画笔大小:', 'es': 'Tamaño del Pincel:', 'fr': 'Taille du Pinceau:'},
-      'h2_gallery_title': {'ru': '🌍 Рисунки игроков', 'en': '🌍 Player Drawings', 'az': '🌍 Oyunçu Rəsmləri', 'tr': '🌍 Oyuncu Çizimleri', 'zh': '🌍 玩家画作', 'es': '🌍 Dibujos de Jugadores', 'fr': '🌍 Dessins des Joueurs'},
-      'btn_gallery_close': {'ru': '❌ Закрыть', 'en': '❌ Close', 'az': '❌ Bağla', 'tr': '❌ Kapat', 'zh': '❌ 关闭', 'es': '❌ Cerrar', 'fr': '❌ Fermer'},
-      'h3_select_lang': {'ru': 'Выбрать язык', 'en': 'Select Language', 'az': 'Dil Seçin', 'tr': 'Dil Seçin', 'zh': '选择语言', 'es': 'Seleccionar Idioma', 'fr': 'Choisir la Langue'},
-      'msg_size_error': {'ru': 'Размер должен быть от 100x100 до 2000x2000.', 'en': 'Size must be between 100x100 and 2000x2000.', 'az': 'Ölçü 100x100 ilə 2000x2000 arasında olmalıdır.', 'tr': 'Boyut 100x100 ve 2000x2000 arasında olmalıdır.', 'zh': '尺寸必须在100x100到2000x2000之间.', 'es': 'El tamaño debe estar entre 100x100 y 2000x2000.', 'fr': 'La taille doit être comprise entre 100x100 et 2000x2000.'},
-      'msg_publish_confirm': {'ru': 'Опубликовать рисунок?', 'en': 'Publish drawing?', 'az': 'Rəsmi dərc edim?', 'tr': 'Çizimi yayınlamak ister misiniz?', 'zh': '发布画作?', 'es': '¿Publicar dibujo?', 'fr': 'Publier le dessin ?'},
-      'msg_publish_success': {'ru': 'Ура! Рисунок теперь в глобальной галерее.', 'en': 'Hooray! Drawing is now in the global gallery.', 'az': 'Əla! Rəsm qlobal qalereyadadır.', 'tr': 'Harika! Çizim artık global galeride.', 'zh': '耶！画作已在画廊中。', 'es': '¡Hurra! El dibujo está en la galería global.', 'fr': 'Hourra! Le dessin est dans la galerie globale.'},
-      'msg_vote_confirm': {'ru': 'Вы уверены, что хотите проголосовать за удаление этого контента (18+/шок)? Ваш голос будет засчитан.', 'en': 'Are you sure you want to vote to delete this content (18+/shock)? Your vote will be counted.', 'az': 'Bu məzmunun (18+/şok) silinməsi üçün səs vermək istədiyinizə əminsinizmi? Səsiniz sayılacaq.', 'tr': 'Bu içeriğin silinmesi için oy kullanmak istediğinizden emin misiniz? Oylarınız sayılacaktır.', 'zh': '您确定要投票删除此内容吗?', 'es': '¿Está seguro de votar para eliminar este contenido?', 'fr': 'Voulez-vous vraiment voter pour supprimer ce contenu ?'},
-      'msg_already_voted': {'ru': 'Вы уже голосовали за удаление этого рисунка!', 'en': 'You have already voted to delete this drawing!', 'az': 'Bu rəsmin silinməsi üçün artıq səs vermisiniz!', 'tr': 'Bu çizimi silmek için zaten oy kullandınız!', 'zh': '您已投票!', 'es': '¡Ya has votado!', 'fr': 'Vous avez déjà voté !'},
-      'msg_deleted': {'ru': 'Рисунок набрал 10 голосов и был удален из галереи.', 'en': 'The drawing received 10 votes and was deleted from the gallery.', 'az': 'Rəsm 10 səs topladı və qalereyadan silindi.', 'tr': 'Çizim 10 oy aldı ve silindi.', 'zh': '画作已删除。', 'es': 'Dibujo eliminado.', 'fr': 'Dessin supprimé.'},
-      'msg_vote_counted': (count) => ({'ru': `Ваш голос засчитан. Голосов за удаление: ${count}/10`, 'en': `Your vote has been counted. Votes for deletion: ${count}/10`, 'az': `Səsiniz sayıldı. Silinmə üçün səs: ${count}/10`, 'tr': `Oylarınız sayıldı. Silme oyu: ${count}/10`, 'zh': `您的投票已计入。删除票数: ${count}/10`, 'es': `Su voto ha sido contado. Votos para eliminar: ${count}/10`, 'fr': `Votre vote a été compté. Votes pour la suppression: ${count}/10`}),
-      'msg_gallery_empty': {'ru': 'Галерея пуста. Нарисуй что-нибудь первым!', 'en': 'Gallery is empty. Draw something first!', 'az': 'Qalereya boşdur. Birinci siz rəsm çəkin!', 'tr': 'Galeri boş. İlk siz çizin!', 'zh': '画廊是空的。', 'es': 'La galería está vacía.', 'fr': 'La galerie est vide.'},
-      'msg_already_voted_btn': {'ru': 'Уже проголосовано', 'en': 'Already voted', 'az': 'Artıq səs verilib', 'tr': 'Zaten oy verildi', 'zh': '已投票', 'es': 'Ya votado', 'fr': 'Déjà voté'},
-      'msg_vote_delete_btn': {'ru': 'Удалить', 'en': 'Delete', 'az': 'Sil', 'tr': 'Sil', 'zh': '删除', 'es': 'Eliminar', 'fr': 'Supprimer'},
-      'msg_load_confirm': {'ru': 'Загрузить этот рисунок на холст?', 'en': 'Load this drawing onto the canvas?', 'az': 'Bu rəsmi kətan üzərinə yükləyim?', 'tr': 'Bu çizimi tuvale yüklemek ister misiniz?', 'zh': '加载此画作?', 'es': '¿Cargar este dibujo?', 'fr': 'Charger ce dessin ?'}
-  };
-  
-  // Текущий язык (по умолчанию русский, или берем из localStorage)
-  let currentLang = localStorage.getItem('suno_lang') || 'ru';
-  
-  window.getTranslation = (key, ...args) => {
-      const translation = translations[key];
-      if (translation && translation[currentLang]) {
-          if (typeof translation[currentLang] === 'function') {
-              return translation[currentLang](...args);
-          }
-          return translation[currentLang];
-      }
-      return translations[key] ? translations[key]['ru'] : key; 
-  };
-  
-  window.applyLanguage = () => {
-      document.getElementById('btn_tools').textContent = window.getTranslation('btn_tools');
-      document.getElementById('btn_color').textContent = window.getTranslation('btn_color');
-      document.getElementById('btn_gallery').textContent = window.getTranslation('btn_gallery');
-      document.getElementById('btn_lang').textContent = window.getTranslation('btn_lang');
-      document.getElementById('btn_global_save').textContent = window.getTranslation('btn_global_save');
-      document.getElementById('btn_download').textContent = window.getTranslation('btn_download');
-      document.getElementById('btn_clear').textContent = window.getTranslation('btn_clear');
-      document.getElementById('lbl_width').textContent = window.getTranslation('lbl_width');
-      document.getElementById('lbl_height').textContent = window.getTranslation('lbl_height');
-      
-      document.getElementById('h3_color_panel').textContent = window.getTranslation('h3_color_panel');
-      document.getElementById('lbl_red').textContent = window.getTranslation('lbl_red');
-      document.getElementById('lbl_green').textContent = window.getTranslation('lbl_green');
-      document.getElementById('lbl_blue').textContent = window.getTranslation('lbl_blue');
-      document.getElementById('lbl_brush_size').textContent = window.getTranslation('lbl_brush_size');
-
-      document.getElementById('h2_gallery_title').textContent = window.getTranslation('h2_gallery_title');
-      document.getElementById('btn_gallery_close').textContent = window.getTranslation('btn_gallery_close');
-      
-      document.getElementById('h3_select_lang').textContent = window.getTranslation('h3_select_lang');
-
-      document.querySelectorAll('.lang-btn').forEach(btn => {
-          btn.classList.remove('active');
-          if (btn.getAttribute('data-lang') === currentLang) {
-              btn.classList.add('active');
-          }
-      });
-  };
-
-  window.setLanguage = (lang) => {
-      currentLang = lang;
-      localStorage.setItem('suno_lang', lang);
-      window.applyLanguage();
-      window.toggleLanguageModal();
-  };
-  
-  window.toggleLanguageModal = () => {
-      const modal = document.getElementById('language-modal');
-      modal.style.display = (getComputedStyle(modal).display === "flex") ? "none" : "flex";
-  };
-
+  window.isOneFingerDraw = false; // Флаг для рисования одним пальцем
+  window.lastTouchCount = 0; // Для отслеживания смены жеста
 
   // --- 1. ФУНКЦИИ УПРАВЛЕНИЯ UI ---
 
   window.toggleToolsPanel = () => {
-      const tools = document.getElementById("tools");
-      tools.style.display = (getComputedStyle(tools).display === "flex") ? "none" : "flex";
+      document.getElementById("tools").style.display = 
+        (getComputedStyle(document.getElementById("tools")).display === "flex") ? "none" : "flex";
   }
   
   window.toggleColorPanel = () => {
-      const colorPanel = document.getElementById("color-panel");
-      colorPanel.style.display = (getComputedStyle(colorPanel).display === "flex") ? "none" : "flex";
+      document.getElementById("color-panel").style.display = 
+        (getComputedStyle(document.getElementById("color-panel")).display === "flex") ? "none" : "flex";
   }
 
   window.toggleGallery = () => {
     const g = document.getElementById("gallery");
-    const isHidden = (getComputedStyle(g).display === "none" || getComputedStyle(g).
+    const isHidden = (getComputedStyle(g).display === "none" || getComputedStyle(g).display === "");
+    
+    if (isHidden) {
+        g.style.display = "flex";
+        loadGlobalGallery(); 
+    } else {
+        g.style.display = "none";
+    }
+  };
+  
+  window.setMode = (newMode, btn) => {
+      window.mode = newMode;
+      toolButtons.forEach(button => button.classList.remove('active'));
+      btn.classList.add('active');
+  }
+
+  window.updateColorPreview = () => {
+    const r = rEl.value;
+    const g = gEl.value;
+    const b = bEl.value;
+    colorPreview.style.backgroundColor = `rgb(${r},${g},${b})`;
+    document.getElementById('r_val').textContent = r;
+    document.getElementById('g_val').textContent = g;
+    document.getElementById('b_val').textContent = b;
+  };
+
+  function getColor() {
+    return `rgb(${rEl.value},${gEl.value},${bEl.value})`;
+  }
+
+  // --- 2. УПРАВЛЕНИЕ ХОЛСТОМ И ФИКСЫ СКРОЛЛА ---
+
+  // ФИКС ПОЛЗУНКОВ: Изоляция от основного скролла и предотвращение стандартных действий
+  document.querySelectorAll('input[type="range"]').forEach(slider => {
+      slider.addEventListener('touchstart', (e) => {
+          e.stopPropagation(); // Не даем событию дойти до body
+      }, { passive: false }); // Важно: passive=false
+      slider.addEventListener('touchmove', (e) => {
+          e.stopPropagation();
+      }, { passive: false });
+  });
+
+
+  window.resizeCanvas = () => {
+      const w = parseInt(document.getElementById('canvasW').value) || 360;
+      const h = parseInt(document.getElementById('canvasH').value) || 500;
+      
+      if(w > 2000 || h > 2000 || w < 100 || h < 100) {
+          alert("Размер должен быть от 100x100 до 2000x2000.");
+          return;
+      }
+
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      
+      // Заливаем временный холст белым перед копированием (для сохранения прозрачности/фона)
+      tempCanvas.getContext('2d').fillStyle = "#fff";
+      tempCanvas.getContext('2d').fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
+
+      canvas.width = w;
+      canvas.height = h;
+      
+      // Заливаем новый холст белым
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      // Копируем содержимое (может быть сжато/растянуто)
+      ctx.drawImage(tempCanvas, 0, 0, w, h);
+  }
+
+  window.downloadCanvas = () => {
+    const link = document.createElement('a');
+    link.download = 'suno_canvas_' + Date.now() + '.png';
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  }
+
+  // --- 3. ЛОГИКА РИСОВАНИЯ С ИДЕАЛЬНЫМ ДЕТЕКТОРОМ ДВУХ ПАЛЬЦЕВ (Ibis Paint X) ---
+
+  function pos(e) {
+    const rct = canvas.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: cx - rct.left, y: cy - rct.top };
+  }
+
+  canvas.onmousedown = canvas.ontouchstart = e => {
+    
+    window.lastTouchCount = e.touches ? e.touches.length : 1;
+
+    if (window.lastTouchCount > 1) {
+        // 2 и более пальцев: Начинаем жест перемещения/масштабирования
+        window.isOneFingerDraw = false;
+        window.drawing = false;
+        // НЕ вызываем preventDefault(), чтобы браузер мог выполнить зум и скролл
+        return; 
+    }
+    
+    // 1 палец: Начинаем рисовать
+    window.isOneFingerDraw = true;
+    window.drawing = true;
+    
+    const p = pos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+
+    if(window.mode==="fill") {
+        ctx.fillStyle = getColor();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        // После заливки отключаем рисование
+        window.drawing = false;
+        window.isOneFingerDraw = false;
+    }
+  };
+
+  canvas.onmouseup = canvas.ontouchend = e => {
+    // Если количество пальцев упало до 0 или мышь отпущена, сбросить флаги
+    if (e.touches && e.touches.length === 0 || !e.touches) {
+        window.drawing = false;
+        window.isOneFingerDraw = false;
+        window.lastTouchCount = 0;
+        ctx.beginPath();
+    }
+    // Если был сброс с 2 до 1 пальца (маловероятно), рисование останется выключенным
+  };
+
+  canvas.onmousemove = canvas.ontouchmove = e => {
+    
+    const currentTouchCount = e.touches ? e.touches.length : 1;
+    
+    // Если мы переключились на 2 пальца ИЛИ мы уже не в режиме рисования одним пальцем, выходим
+    if (currentTouchCount > 1 || !window.isOneFingerDraw) {
+        window.drawing = false;
+        return;
+    }
+    
+    // Мы уверены, что это рисование (1 палец): запрещаем скролл
+    e.preventDefault(); 
+
+    const p = pos(e);
+    const lineWidth = sizeEl.value;
+    
+    if (window.mode === "draw") {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = getColor();
+      ctx.lineWidth = lineWidth;
+    }
+    if (window.mode === "erase") {
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.lineWidth = lineWidth;
+    }
+    
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  };
+
+  window.clearCanvas = () => {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+  
+  // Инициализация
+  window.clearCanvas();
+
+
+  // --- 4. FIREBASE ЛОГИКА (Остается без изменений, кроме использования новой логики) ---
+
+  window.saveToFirebase = async () => {
+    if(!confirm("Опубликовать рисунок?")) return;
+    
+    loader.style.display = "inline"; 
+    
+    try {
+        const imgData = canvas.toDataURL("image/png");
+        
+        await addDoc(galleryRef, {
+            image: imgData,
+            date: Date.now(),
+            deleteVotes: 0,       
+            voters: []            
+        });
+        
+        alert("Ура! Рисунок теперь в глобальной галерее.");
+        window.toggleGallery(); 
+    } catch (e) {
+        console.error("Ошибка Firebase:", e);
+        if(e.code === 'permission-denied') {
+            alert("Ошибка доступа! Проверьте правила (Rules) Firebase.");
+        } else {
+            alert("Ошибка: " + e.message);
+        }
+    } finally {
+        loader.style.display = "none";
+    }
+  };
+
+  window.voteToDelete = async (docId, currentVotes, currentVoters) => {
+      if (!confirm("Вы уверены, что хотите проголосовать за удаление этого контента (18+/шок)? Ваш голос будет засчитан.")) return;
+
+      if (currentVoters.includes(USER_ID)) {
+          alert("Вы уже голосовали за удаление этого рисунка!");
+          return;
+      }
+      
+      const docRef = doc(db, "drawings", docId);
+
+      try {
+          const newVotes = currentVotes + 1;
+          
+          if (newVotes >= 10) {
+              await deleteDoc(docRef);
+              alert("Рисунок набрал 10 голосов и был удален из галереи.");
+              loadGlobalGallery();
+          } else {
+              await updateDoc(docRef, {
+                  deleteVotes: increment(1), 
+                  voters: arrayUnion(USER_ID) 
+              });
+              alert(`Ваш голос засчитан. Голосов за удаление: ${newVotes}/10`);
+              
+              const voteCounterElement = document.getElementById(`votes-${docId}`);
+              const voteButtonElement = document.getElementById(`button-${docId}`);
+              if (voteCounterElement) {
+                  voteCounterElement.textContent = `🚨 ${newVotes}/10`;
+              }
+              if (voteButtonElement) {
+                  voteButtonElement.disabled = true;
+                  voteButtonElement.textContent = "Уже проголосовано";
+              }
+          }
+      } catch (e) {
+          console.error("Ошибка при голосовании:", e);
+          alert("Не удалось проголосовать. Проверьте правила Firebase!");
+      }
+  };
+
+
+  async function loadGlobalGallery() {
+    const content = document.getElementById("galleryContent");
+    content.innerHTML = "<p style='color:#0f0'>Подключение к базе...</p>";
+    
+    try {
+        const q = query(galleryRef, orderBy("date", "desc"), limit(20));
+        const querySnapshot = await getDocs(q);
+        
+        content.innerHTML = ""; 
+        
+        if(querySnapshot.empty) {
+            content.innerHTML = "<p>Галерея пуста. Нарисуй что-нибудь первым!</p>";
+            return;
+        }
+
+        querySnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const docId = docSnap.id; 
+
+            const div = document.createElement("div");
+            div.className = "gallery-item";
+            
+            const img = new Image();
+            img.src = data.image;
+            img.onclick = () => {
+                if(confirm("Загрузить этот рисунок на холст?")) {
+                    const pic = new Image();
+                    pic.src = data.image;
+                    pic.onload = () => {
+                        window.clearCanvas(); 
+                        ctx.globalCompositeOperation = "source-over";
+                        canvas.width = pic.width;
+                        canvas.height = pic.height;
+                        document.getElementById('canvasW').value = pic.width;
+                        document.getElementById('canvasH').value = pic.height;
+                        ctx.drawImage(pic, 0,0);
+                    }
+                    window.toggleGallery();
+                }
+            };
+            
+            const currentVotes = data.deleteVotes || 0;
+            const votersArray = data.voters || [];
+
+            const voteButton = document.createElement("button");
+            voteButton.id = `button-${docId}`; 
+            voteButton.style.marginTop = "5px";
+            voteButton.style.padding = "5px 10px";
+            voteButton.classList.add('danger-btn');
+            voteButton.textContent = `Удалить`; 
+            voteButton.onclick = () => window.voteToDelete(docId, currentVotes, votersArray);
+            
+            const voteCounter = document.createElement("p");
+            voteCounter.id = `votes-${docId}`;
+            voteCounter.style.fontSize = "12px";
+            voteCounter.style.margin = "0";
+            voteCounter.style.color = "#f00";
+            voteCounter.textContent = `🚨 ${currentVotes}/10`;
+            
+            if (votersArray.includes(USER_ID)) {
+                 voteButton.disabled = true;
+                 voteButton.textContent = "Уже проголосовано";
+            }
+
+            div.appendChild(img);
+            div.appendChild(voteCounter);
+            div.appendChild(voteButton);
+            co
