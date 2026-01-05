@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Suno Global Gallery</title>
+<style>
+body { margin: 0; background: #0c0c0c; color: #fff; font-family: Arial, sans-serif; overflow: hidden; }
+#top { background: #111; padding: 15px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; border-bottom: 1px solid #333; }
+button, input[type=range] { background: #1a1a1a; color: #0ff; border: 2px solid #0ff; border-radius: 12px; padding: 12px 16px; font-size: 16px; cursor: pointer; transition: 0.2s; }
+button:hover, input[type=range]:hover { border-color:#0f0; background: #222; }
+button:active { transform: scale(0.95); }
+
+#tools { display: none; padding: 15px; background: #111; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; border-bottom: 1px solid #333; }
+canvas { display: block; margin: 20px auto; border: 2px solid #0ff; border-radius: 10px; touch-action: none; background: #000; box-shadow: 0 0 20px rgba(0, 255, 255, 0.2); }
+#colorPreview { width:40px; height:40px; border-radius:50%; border:2px solid #fff; margin: 0 10px; }
+
+/* Галерея поверх всего */
+#gallery { 
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(12, 12, 12, 0.98); 
+  padding: 20px; 
+  display: none; 
+  flex-direction: column;
+  overflow-y: auto; 
+  z-index: 1000;
+}
+.gallery-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.gallery-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; }
+
+.gallery-item { text-align: center; position: relative; animation: fadeIn 0.5s; }
+.gallery-item img { height: 150px; border: 2px solid #333; border-radius: 10px; cursor: pointer; transition: 0.2s; }
+.gallery-item img:hover { border-color: #0f0; transform: scale(1.05); }
+
+.slider-container { display:flex; flex-direction:column; align-items:center; }
+.slider-container label { font-size:12px; color: #888; margin-bottom: 4px; }
+
+@keyframes fadeIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
+
+/* Лоадер */
+#loader { display: none; color: #0f0; font-weight: bold; margin-left: 10px; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: 0.5; } }
+</style>
+</head>
+<body>
+
+<div id="top">
+  <button onclick="window.toggleTools()">✏️ Рисовать</button>
+  <button onclick="window.toggleGallery()">🌍 Глобальная Галерея</button>
+  <button onclick="window.saveToFirebase()" style="border-color: #f0f; color: #f0f;">☁️ В Глобал!</button>
+  <button onclick="window.clearCanvas()">🗑 Стереть всё</button>
+  <span id="loader">Загрузка...</span>
+</div>
+
+<div id="tools">
+  <div class="slider-container"><label>R</label><input type="range" id="r" min="0" max="255" value="0" oninput="updateColorPreview()"></div>
+  <div class="slider-container"><label>G</label><input type="range" id="g" min="0" max="255" value="255" oninput="updateColorPreview()"></div>
+  <div class="slider-container"><label>B</label><input type="range" id="b" min="0" max="255" value="255" oninput="updateColorPreview()"></div>
+  <div id="colorPreview"></div>
+  <div class="slider-container"><label>Size</label><input type="range" id="size" min="1" max="40" value="5"></div>
+  <button onclick="mode='draw'">Кисть</button>
+  <button onclick="mode='erase'">Ластик</button>
+  <button onclick="mode='fill'">Заливка</button>
+</div>
+
+<canvas id="canvas" width="360" height="500"></canvas>
+
+<div id="gallery">
+    <div class="gallery-header">
+        <h2 style="margin:0;">🌎 Рисунки игроков</h2>
+        <button onclick="window.toggleGallery()">❌ Закрыть</button>
+    </div>
+    <div id="galleryContent" class="gallery-grid"></div>
+</div>
+
+<script type="module">
+  // Импортируем Firebase через CDN (для работы в браузере без установки)
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  // ВАШИ НАСТРОЙКИ (Я их уже вставил)
+  const firebaseConfig = {
+    apiKey: "AIzaSyCekB6vZ6qGAnvDO1LOA7OUGmA3zU1aLoA",
+    authDomain: "suno-gallery.firebaseapp.com",
+    projectId: "suno-gallery",
+    storageBucket: "suno-gallery.firebasestorage.app",
+    messagingSenderId: "314284584278",
+    appId: "1:314284584278:web:97c5b91180562fd1c93af7",
+    measurementId: "G-2J4PNZX4CV"
+  };
+
+  // Инициализация
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const galleryRef = collection(db, "drawings"); // Коллекция в базе
+
+  // --- ЛОГИКА РИСОВАНИЯ ---
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+  
+  // Глобальные переменные в window
+  window.drawing = false;
+  window.mode = "draw";
+
+  window.toggleTools = () => {
+    const t = document.getElementById("tools");
+    t.style.display = (t.style.display === "flex") ? "none" : "flex";
+  };
+
+  window.toggleGallery = () => {
+    const g = document.getElementById("gallery");
+    const isHidden = (getComputedStyle(g).display === "none");
+    
+    if (isHidden) {
+        g.style.display = "flex";
+        loadGlobalGallery(); // Грузим при открытии
+    } else {
+        g.style.display = "none";
+    }
+  };
+
+  window.updateColorPreview = () => {
+    const r = document.getElementById("r").value;
+    const g = document.getElementById("g").value;
+    const b = document.getElementById("b").value;
+    document.getElementById("colorPreview").style.backgroundColor = `rgb(${r},${g},${b})`;
+  };
+
+  function getColor() {
+    const r = document.getElementById("r").value;
+    const g = document.getElementById("g").value;
+    const b = document.getElementById("b").value;
+    return `rgb(${r},${g},${b})`;
+  }
+
+  function pos(e) {
+    const rct = canvas.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: cx - rct.left, y: cy - rct.top };
+  }
+
+  canvas.onmousedown = canvas.ontouchstart = e => {
+    window.drawing = true;
+    if(e.type === 'touchstart') document.body.style.overflow = "hidden";
+    
+    const p = pos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+
+    if(window.mode==="fill") {
+        ctx.fillStyle = getColor();
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+    }
+  };
+
+  canvas.onmouseup = canvas.ontouchend = () => {
+    window.drawing = false;
+    ctx.beginPath();
+    document.body.style.overflow = "auto";
+  };
+
+  canvas.onmousemove = canvas.ontouchmove = e => {
+    if (!window.drawing) return;
+    e.preventDefault();
+    const p = pos(e);
+    
+    if (window.mode === "draw") {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = getColor();
+      ctx.lineWidth = document.getElementById("size").value;
+    }
+    if (window.mode === "erase") {
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.lineWidth = 20;
+    }
+    
+    ctx.lineCap = "round";
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  };
+
+  window.clearCanvas = () => ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // --- ЛОГИКА FIREBASE (СОХРАНЕНИЕ И ЗАГРУЗКА) ---
+
+  window.saveToFirebase = async () => {
+    if(!confirm("Опубликовать рисунок?")) return;
+    
+    const loader = document.getElementById("loader");
+    loader.style.display = "inline"; 
+    
+    try {
+        const imgData = canvas.toDataURL("image/png");
+        
+        await addDoc(galleryRef, {
+            image: imgData,
+            date: Date.now()
+        });
+        
+        alert("Ура! Рисунок теперь в глобальной галерее.");
+        window.toggleGallery(); 
+    } catch (e) {
+        console.error("Ошибка Firebase:", e);
+        // Частая ошибка - нет доступа
+        if(e.code === 'permission-denied') {
+            alert("Ошибка доступа! В консоли Firebase вы не включили 'Test Mode' или правила блокируют запись.");
+        } else {
+            alert("Ошибка: " + e.message);
+        }
+    } finally {
+        loader.style.display = "none";
+    }
+  };
+
+  async function loadGlobalGallery() {
+    const content = document.getElementById("galleryContent");
+    content.innerHTML = "<p style='color:#0f0'>Подключение к базе...</p>";
+    
+    try {
+        // Запрос: сортировка по дате (сначала новые), лимит 20 шт
+        const q = query(galleryRef, orderBy("date", "desc"), limit(20));
+        
+        const querySnapshot = await getDocs(q);
+        content.innerHTML = ""; 
+        
+        if(querySnapshot.empty) {
+            content.innerHTML = "<p>Галерея пуста. Нарисуй что-нибудь первым!</p>";
+            return;
+        }
+
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            
+            const div = document.createElement("div");
+            div.className = "gallery-item";
+            
+            const img = new Image();
+            img.src = data.image;
+            img.onclick = () => {
+                if(confirm("Загрузить этот рисунок на холст?")) {
+                    const pic = new Image();
+                    pic.src = data.image;
+                    pic.onload = () => {
+                        ctx.globalCompositeOperation = "source-over";
+                        ctx.drawImage(pic, 0,0);
+                    }
+                    window.toggleGallery();
+                }
+            };
+            
+            div.appendChild(img);
+            content.appendChild(div);
+        });
+
+    } catch (e) {
+        console.error(e);
+        content.innerHTML = "<p style='color:red'>Ошибка загрузки. Проверьте консоль Firebase.</p>";
+    }
+  }
+
+  // Запуск первой настройки цвета
+  window.updateColorPreview();
+</script>
+
+</body>
+  </html>
