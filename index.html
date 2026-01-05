@@ -3,128 +3,162 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Suno Global Canvas (Custom Size)</title>
+<title>Suno Global Canvas (Ultimate)</title>
 <style>
+/* --- 1. ОСНОВНОЙ СТИЛЬ --- */
 :root {
-  --main-bg: #121212;
-  --top-bar-bg: #222222;
-  --control-bg: #333333;
-  --accent-color: #008cff;
+  --bg-color: #121212;
+  --panel-bg: #222222;
+  --btn-bg: #333333;
   --text-color: #f0f0f0;
+  --accent: #008cff;
 }
 
 body {
   margin: 0; padding: 0;
-  background: var(--main-bg);
+  background: var(--bg-color);
   color: var(--text-color);
   font-family: sans-serif;
+  height: 100vh;
   display: flex; flex-direction: column;
-  height: 100vh; overflow: hidden;
+  overflow: hidden; /* Блокируем скролл всей страницы */
 }
 
-#top {
-  background: var(--top-bar-bg);
-  padding: 8px 10px;
-  display: flex; gap: 8px;
-  align-items: center;
-  border-bottom: 2px solid #444;
-  overflow-x: auto;
+/* --- 2. ВЕРХНЯЯ ПАНЕЛЬ --- */
+#top-bar {
+  background: var(--panel-bg);
+  padding: 8px;
+  display: flex; gap: 8px; align-items: center;
+  border-bottom: 1px solid #444;
+  overflow-x: auto; /* Горизонтальный скролл для кнопок */
+  white-space: nowrap;
   flex-shrink: 0;
-  z-index: 9999;
+  z-index: 9999; /* Поверх всего */
+  height: 50px;
 }
 
-.size-input {
-  display: flex; align-items: center; gap: 4px; font-size: 12px;
+/* Стили полей ввода размера */
+.size-inputs {
+  display: flex; align-items: center; gap: 5px;
 }
-.size-input input {
-  width: 50px; background: #000; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 4px;
+.size-inputs input {
+  width: 45px; background: #000; color: #fff;
+  border: 1px solid #555; padding: 5px; text-align: center;
+  border-radius: 4px;
 }
 
 button {
-  background: var(--control-bg);
-  color: #fff; border: 1px solid #555;
-  border-radius: 6px; padding: 8px 12px;
-  font-size: 13px; white-space: nowrap;
+  background: var(--btn-bg); color: #fff;
+  border: 1px solid #555; border-radius: 5px;
+  padding: 8px 12px; font-size: 14px;
+  cursor: pointer;
 }
+button:active { background: var(--accent); }
 
+/* --- 3. ХОЛСТ И ВЬЮПОРТ --- */
 #viewport {
-  flex-grow: 1; position: relative;
-  background: #1a1a1a; overflow: hidden;
-  touch-action: none;
+  flex-grow: 1;
+  position: relative;
+  background: #181818;
+  overflow: hidden;
+  touch-action: none; /* Важно для жестов */
 }
 
 canvas {
-  position: absolute; background: #fff; transform-origin: 0 0;
+  position: absolute;
+  background: #fff;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+  transform-origin: 0 0;
 }
 
-#tools, #color-panel {
-  position: fixed; top: 75px;
-  background: rgba(35, 35, 35, 0.98);
-  border: 1px solid #555; border-radius: 8px;
-  padding: 15px; display: none;
-  z-index: 10000; flex-direction: column; gap: 12px;
+/* --- 4. ВСПЛЫВАЮЩИЕ ПАНЕЛИ --- */
+.floating-panel {
+  position: fixed; top: 70px;
+  background: rgba(30,30,30,0.95);
+  border: 1px solid #666; border-radius: 8px;
+  padding: 15px;
+  display: none; flex-direction: column; gap: 12px;
+  z-index: 10000;
 }
-#tools { left: 10px; }
-#color-panel { right: 10px; width: 220px; }
+#tools-panel { left: 10px; }
+#colors-panel { right: 10px; width: 220px; }
 
-#color-preview { height: 40px; width: 100%; border-radius: 4px; border: 2px solid #fff; margin-bottom: 5px; }
+/* Ползунки и превью цвета */
 input[type=range] { width: 100%; height: 25px; }
-
-#gallery {
-  position: fixed; inset: 0; background: #000; z-index: 20000;
-  display: none; flex-direction: column; padding: 15px; overflow-y: auto;
+#color-preview {
+  width: 100%; height: 40px;
+  border: 2px solid #fff; border-radius: 4px;
+  margin-bottom: 5px;
+  background: #000;
 }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 15px; }
-.card { background: #222; padding: 8px; border-radius: 8px; }
-.card img { width: 100%; height: 100px; object-fit: contain; }
+
+/* --- 5. ГАЛЕРЕЯ --- */
+#gallery-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: #000;
+  z-index: 20000;
+  display: none; flex-direction: column;
+  padding: 15px;
+}
+#gallery-content {
+  margin-top: 15px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px; overflow-y: auto; height: 100%;
+}
+.art-card { background: #222; padding: 5px; border-radius: 6px; text-align: center; }
+.art-card img { width: 100%; height: 120px; object-fit: contain; background: #000; }
+.report-btn { margin-top: 5px; font-size: 10px; width: 100%; background: #442222; }
+
 </style>
 </head>
 <body>
 
-<div id="top">
-  <button onclick="toggleEl('tools')">🛠</button>
-  <div class="size-input">
-    W: <input type="number" id="inpW" value="360" onchange="resizeCanvas()">
-    H: <input type="number" id="inpH" value="500" onchange="resizeCanvas()">
+<div id="top-bar">
+  <button onclick="toggle('tools-panel')">🛠 Инстр.</button>
+  
+  <div class="size-inputs">
+    <span>W:</span><input type="number" id="inpW" value="360" onchange="resizeCanvas()">
+    <span>H:</span><input type="number" id="inpH" value="500" onchange="resizeCanvas()">
   </div>
-  <button onclick="toggleEl('color-panel')">🎨 Цвет</button>
-  <button onclick="toggleEl('gallery')">🌍 Глобально</button>
-  <button onclick="saveToCloud()" style="background: #004a80;">☁️ Запустить</button>
-  <button onclick="downloadImg()">💾 Save</button>
-  <button onclick="resetView()">🎯</button>
-  <button onclick="clearCanvas()" style="color:red">🗑</button>
+
+  <button onclick="toggle('colors-panel')">🎨 Цвет</button>
+  <button onclick="toggleGallery()">🌍 Глобально</button>
+  <button onclick="saveToCloud()" style="border: 1px solid #008cff; color: #008cff;">☁️ Запустить</button>
+  <button onclick="downloadImg()">💾 Скачать</button>
+  <button onclick="resetView()">🎯 Центр</button>
+  <button onclick="clearCanvas()" style="color: #ff4444;">🗑</button>
 </div>
 
-<div id="tools">
-    <button onclick="setMode('draw')">✏️ Кисть</button>
-    <button onclick="setMode('erase')">🧽 Ластик</button>
-    <button onclick="setMode('fill')">⬛ Заливка</button>
-    <hr style="border:0; border-top:1px solid #555">
-    <button onclick="document.getElementById('fileInput').click()">📁 Загрузить фото</button>
-    <input type="file" id="fileInput" hidden accept="image/*" onchange="loadImage(event)">
+<div id="tools-panel" class="floating-panel">
+  <button onclick="setMode('draw')">✏️ Карандаш</button>
+  <button onclick="setMode('erase')">🧽 Ластик</button>
+  <button onclick="setMode('fill')">⬛ Заливка</button>
+  <hr style="width:100%; border:0; border-top:1px solid #555;">
+  <button onclick="document.getElementById('fileIn').click()">📁 Загрузить фото</button>
+  <input type="file" id="fileIn" hidden accept="image/*" onchange="handleImage(event)">
 </div>
 
-<div id="color-panel">
-    <div id="color-preview"></div>
-    <label>Размер: <span id="sz_val">5</span></label>
-    <input type="range" id="size" min="1" max="100" value="5" oninput="document.getElementById('sz_val').innerText=this.value">
-    <label>R</label> <input type="range" id="r" max="255" value="0" oninput="updCol()">
-    <label>G</label> <input type="range" id="g" max="255" value="0" oninput="updCol()">
-    <label>B</label> <input type="range" id="b" max="255" value="0" oninput="updCol()">
+<div id="colors-panel" class="floating-panel">
+  <div id="color-preview"></div>
+  <label>Размер кисти: <span id="s_val">5</span></label>
+  <input type="range" id="size" min="1" max="100" value="5" oninput="document.getElementById('s_val').innerText=this.value">
+  <label>R (Красный)</label><input type="range" id="r" max="255" value="0" oninput="updColor()">
+  <label>G (Зеленый)</label><input type="range" id="g" max="255" value="0" oninput="updColor()">
+  <label>B (Синий)</label><input type="range" id="b" max="255" value="0" oninput="updColor()">
 </div>
 
 <div id="viewport">
-    <canvas id="canvas" width="360" height="500"></canvas>
+  <canvas id="canvas" width="360" height="500"></canvas>
 </div>
 
-<div id="gallery">
-    <button onclick="toggleEl('gallery')">❌ Закрыть</button>
-    <div id="galleryContent" class="grid"></div>
+<div id="gallery-overlay">
+  <button onclick="toggleGallery()">❌ Закрыть галерею</button>
+  <div id="gallery-content">Загрузка...</div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, doc, updateDoc, increment, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, doc, updateDoc, increment, arrayUnion, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCekB6vZ6qGAnvDO1LOA7OUGmA3zU1aLoA",
@@ -133,156 +167,279 @@ const firebaseConfig = {
     appId: "1:314284584278:web:97c5b91180562fd1c93af7"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const galleryRef = collection(db, "drawings");
-let USER_ID = localStorage.getItem("art_uid") || 'u' + Math.random().toString(36).substr(2, 9);
-localStorage.setItem("art_uid", USER_ID);
+let db, galleryRef;
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  galleryRef = collection(db, "drawings");
+} catch(e) { console.error("Firebase err:", e); }
 
+// ID пользователя (чтобы голосовать 1 раз)
+let USER_ID = localStorage.getItem("u_id");
+if(!USER_ID) {
+  USER_ID = 'user_' + Date.now() + Math.random();
+  localStorage.setItem("u_id", USER_ID);
+}
+
+// Глобальная функция сохранения
 window.saveToCloud = async () => {
-    if(!confirm("Опубликовать в глобальную сеть?")) return;
+    if(!db) return alert("Нет соединения с базой");
+    if(!confirm("Опубликовать рисунок в глобальную ленту?")) return;
+    
     try {
+        const dataUrl = document.getElementById('canvas').toDataURL('image/jpeg', 0.6);
         await addDoc(galleryRef, {
-            image: canvas.toDataURL('image/jpeg', 0.5),
+            image: dataUrl,
             date: Date.now(),
             reports: 0,
             reporters: []
         });
-        alert("Готово!");
-    } catch(e) { alert("Ошибка сохранения"); }
+        alert("Успешно опубликовано!");
+        window.toggleGallery();
+    } catch(e) { alert("Ошибка: " + e.message); }
 };
 
-window.loadGallery = async () => {
-    const cont = document.getElementById("galleryContent");
-    cont.innerHTML = "Загрузка...";
+// Глобальная функция загрузки галереи
+window.loadGlobalGallery = async () => {
+    const box = document.getElementById("gallery-content");
+    box.innerHTML = "Загрузка рисунков...";
+    
+    if(!db) return;
     try {
-        const q = query(galleryRef, orderBy("date", "desc"), limit(20));
+        const q = query(galleryRef, orderBy("date", "desc"), limit(25));
         const snap = await getDocs(q);
-        cont.innerHTML = "";
+        box.innerHTML = "";
+        
         snap.forEach(d => {
-            const item = d.data();
-            const card = document.createElement("div");
-            card.className = "card";
-            card.innerHTML = `<img src="${item.image}"><button style="width:100%; font-size:10px; margin-top:5px;">Жалоба (${item.reports||0})</button>`;
-            card.querySelector("button").onclick = async () => {
-                if(item.reporters?.includes(USER_ID)) return alert("Вы уже жаловались!");
-                await updateDoc(doc(db, "drawings", d.id), { reports: increment(1), reporters: arrayUnion(USER_ID) });
-                alert("Жалоба отправлена");
+            const data = d.data();
+            const div = document.createElement("div");
+            div.className = "art-card";
+            div.innerHTML = `
+                <img src="${data.image}">
+                <button class="report-btn">Пожаловаться (${data.reports||0})</button>
+            `;
+            
+            // Обработка кнопки жалобы
+            const btn = div.querySelector("button");
+            btn.onclick = async () => {
+                if(data.reporters && data.reporters.includes(USER_ID)) {
+                    alert("Вы уже жаловались на этот рисунок."); return;
+                }
+                if(!confirm("Пожаловаться на контент?")) return;
+                
+                const ref = doc(db, "drawings", d.id);
+                // Если 5 жалоб - удаляем
+                if((data.reports || 0) >= 4) {
+                    await deleteDoc(ref);
+                    div.remove();
+                } else {
+                    await updateDoc(ref, {
+                        reports: increment(1),
+                        reporters: arrayUnion(USER_ID)
+                    });
+                    btn.innerText = "Жалоба отправлена";
+                }
             };
-            cont.appendChild(card);
+            box.appendChild(div);
         });
-    } catch(e) { cont.innerHTML = "Ошибка загрузки"; }
+    } catch(e) { box.innerHTML = "Ошибка загрузки: " + e.message; }
 };
 </script>
 
 <script>
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-const viewport = document.getElementById('viewport');
-const cp = document.getElementById('color-preview');
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const viewport = document.getElementById("viewport");
+const preview = document.getElementById("color-preview");
 
-let scale = 1, pX = 0, pY = 0, isDrawing = false, mode = 'draw', lastX = 0, lastY = 0;
+// Состояние
+let scale = 1, pX = 0, pY = 0; // Камера
+let mode = "draw"; // draw, erase, fill
+let isDrawing = false;
+let lastX = 0, lastY = 0;
 
-function updCol() {
-    const c = `rgb(${document.getElementById('r').value},${document.getElementById('g').value},${document.getElementById('b').value})`;
-    cp.style.backgroundColor = c;
-}
+// Инициализация
+updColor();
+setTimeout(resetView, 100);
 
-function resizeCanvas() {
-    const nw = document.getElementById('inpW').value;
-    const nh = document.getElementById('inpH').value;
-    const temp = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    canvas.width = nw;
-    canvas.height = nh;
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0,0,nw,nh);
-    ctx.putImageData(temp, 0, 0);
-    resetView();
-}
-
-function toggleEl(id) {
+// --- ФУНКЦИИ ИНТЕРФЕЙСА ---
+function toggle(id) {
     const el = document.getElementById(id);
+    document.querySelectorAll('.floating-panel').forEach(p => {
+       if(p.id !== id) p.style.display = 'none';
+    });
     el.style.display = (el.style.display === 'flex') ? 'none' : 'flex';
-    if(id === 'gallery' && el.style.display === 'flex') window.loadGallery();
 }
 
-function setMode(m) { mode = m; toggleEl('tools'); }
+function toggleGallery() {
+    const el = document.getElementById("gallery-overlay");
+    const show = (el.style.display !== 'flex');
+    el.style.display = show ? 'flex' : 'none';
+    if(show && window.loadGlobalGallery) window.loadGlobalGallery();
+}
 
-function clearCanvas() { ctx.fillStyle = "#fff"; ctx.fillRect(0,0,canvas.width,canvas.height); }
+function setMode(m) { mode = m; toggle('tools-panel'); }
+
+function updColor() {
+    const r = document.getElementById('r').value;
+    const g = document.getElementById('g').value;
+    const b = document.getElementById('b').value;
+    preview.style.background = `rgb(${r},${g},${b})`;
+}
+
+function getColor() { return preview.style.background; }
 
 function downloadImg() {
     const a = document.createElement('a');
-    a.download = 'my_drawing.png'; a.href = canvas.toDataURL(); a.click();
+    a.download = 'art_' + Date.now() + '.png';
+    a.href = canvas.toDataURL();
+    a.click();
 }
 
-function loadImage(e) {
+function clearCanvas() {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+}
+
+function resizeCanvas() {
+    const w = document.getElementById('inpW').value;
+    const h = document.getElementById('inpH').value;
+    // Сохраняем текущий рисунок перед изменением размера
+    const temp = document.createElement('canvas');
+    temp.width = canvas.width; temp.height = canvas.height;
+    temp.getContext('2d').drawImage(canvas, 0, 0);
+    
+    canvas.width = w; canvas.height = h;
+    clearCanvas(); // Заливаем белым
+    ctx.drawImage(temp, 0, 0); // Возвращаем рисунок
+    resetView();
+}
+
+function handleImage(e) {
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = function(event) {
         const img = new Image();
-        img.onload = () => {
+        img.onload = function() {
             clearCanvas();
+            // Масштабируем картинку, чтобы влезла
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            toggleEl('tools');
-        };
+            toggle('tools-panel');
+        }
         img.src = event.target.result;
-    };
+    }
     reader.readAsDataURL(e.target.files[0]);
 }
 
+// --- УПРАВЛЕНИЕ КАМЕРОЙ (ЖЕСТЫ) ---
 function resetView() {
-    scale = Math.min(viewport.clientWidth / canvas.width, viewport.clientHeight / canvas.height) * 0.9;
-    pX = (viewport.clientWidth - canvas.width * scale) / 2;
-    pY = 40;
+    // Автозум, чтобы холст целиком влез в экран с отступом
+    const vW = viewport.clientWidth;
+    const vH = viewport.clientHeight;
+    scale = Math.min(vW / canvas.width, vH / canvas.height) * 0.9;
+    pX = (vW - canvas.width * scale) / 2;
+    pY = 20;
     updateTransform();
 }
 
-function updateTransform() { canvas.style.transform = `translate(${pX}px, ${pY}px) scale(${scale})`; }
-
-function getPos(e) {
-    const rect = viewport.getBoundingClientRect();
-    const t = e.touches ? e.touches[0] : e;
-    return { x: (t.clientX - rect.left - pX) / scale, y: (t.clientY - rect.top - pY) / scale };
+function updateTransform() {
+    canvas.style.transform = `translate(${pX}px, ${pY}px) scale(${scale})`;
 }
 
-let sD = 0, sS = 1, sX = 0, sY = 0;
+function getLocalCoords(e) {
+    const rect = viewport.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return {
+        x: (t.clientX - rect.left - pX) / scale,
+        y: (t.clientY - rect.top - pY) / scale
+    };
+}
+
+// --- ОБРАБОТЧИКИ TOUCH ---
+let startDist = 0, startScale = 1;
+let startX = 0, startY = 0; // Для панорамирования
+
 viewport.addEventListener('touchstart', e => {
-    if (e.touches.length === 2) {
+    if(e.touches.length === 2) {
+        // ДВА ПАЛЬЦА = ЗУМ И ПЕРЕМЕЩЕНИЕ
         isDrawing = false;
-        sD = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-        sS = scale;
-        sX = (e.touches[0].pageX + e.touches[1].pageX) / 2 - pX;
-        sY = (e.touches[0].pageY + e.touches[1].pageY) / 2 - pY;
-    } else {
+        startDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+        );
+        startScale = scale;
+        // Центр жеста
+        startX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - pX;
+        startY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - pY;
+    } else if(e.touches.length === 1) {
+        // ОДИН ПАЛЕЦ = РИСОВАНИЕ
         isDrawing = true;
-        const p = getPos(e); lastX = p.x; lastY = p.y;
-        if(mode === 'fill') { ctx.fillStyle = cp.style.backgroundColor; ctx.fillRect(0,0,canvas.width,canvas.height); }
+        const p = getLocalCoords(e);
+        lastX = p.x; lastY = p.y;
+        
+        if(mode === 'fill') {
+            ctx.fillStyle = getColor();
+            ctx.fillRect(0,0,canvas.width, canvas.height);
+        } else {
+            // Точка при нажатии
+            ctx.beginPath();
+            ctx.fillStyle = getColor();
+            if(mode === 'erase') ctx.fillStyle = '#fff';
+            ctx.arc(p.x, p.y, document.getElementById('size').value / 2, 0, Math.PI*2);
+            ctx.fill();
+        }
     }
 }, {passive: false});
 
 viewport.addEventListener('touchmove', e => {
-    e.preventDefault();
-    if (e.touches.length === 2) {
-        const d = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-        scale = sS * (d / sD);
-        pX = (e.touches[0].pageX + e.touches[1].pageX) / 2 - sX;
-        pY = (e.touches[0].pageY + e.touches[1].pageY) / 2 - sY;
+    e.preventDefault(); // Блокируем скролл браузера
+
+    if(e.touches.length === 2) {
+        // Логика зума
+        const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+        );
+        scale = startScale * (dist / startDist);
+        
+        // Логика перемещения
+        const curX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const curY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        pX = curX - startX;
+        pY = curY - startY;
+        
         updateTransform();
-    } else if (isDrawing) {
-        const p = getPos(e);
+    } 
+    else if(isDrawing && e.touches.length === 1) {
+        const p = getLocalCoords(e);
+        
         ctx.beginPath();
-        ctx.globalCompositeOperation = (mode === 'erase') ? 'destination-out' : 'source-over';
-        ctx.strokeStyle = cp.style.backgroundColor;
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(p.x, p.y);
+        
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
         ctx.lineWidth = document.getElementById('size').value;
-        ctx.lineCap = 'round'; ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke();
+        
+        if(mode === 'erase') {
+            ctx.globalCompositeOperation = 'destination-out'; // Честный ластик (прозрачность)
+            // Но так как у нас белый фон, лучше рисовать белым, если не нужен PNG с прозрачностью
+             ctx.globalCompositeOperation = 'source-over';
+             ctx.strokeStyle = '#ffffff';
+        } else {
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.strokeStyle = getColor();
+        }
+        
+        ctx.stroke();
         lastX = p.x; lastY = p.y;
     }
 }, {passive: false});
 
-window.addEventListener('touchend', () => isDrawing = false);
-
-clearCanvas();
-updCol();
-setTimeout(resetView, 300);
+window.addEventListener('touchend', () => {
+    isDrawing = false;
+});
 </script>
+
 </body>
-</html>
+  </html>
+  
