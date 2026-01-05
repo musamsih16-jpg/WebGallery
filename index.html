@@ -2,14 +2,14 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Suno Global Canvas (Pro)</title>
+<title>Suno Global Canvas (Mobile Optimized)</title>
 <style>
 /* --- 1. СТИЛЬ IbisPaint X (ТЕМНЫЙ, СОВРЕМЕННЫЙ) --- */
 :root {
   --main-bg: #1e1e1e;
   --top-bar-bg: #2d2d2d;
   --control-bg: #3c3c3c;
-  --accent-color: #008cff; /* Синий акцент */
+  --accent-color: #008cff;
   --text-color: #f0f0f0;
   --border-color: #444;
   --danger-color: #ff3b30;
@@ -20,7 +20,8 @@ body {
   background: var(--main-bg);
   color: var(--text-color);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  overflow: hidden; /* Основная область без скролла */
+  overflow-y: auto; /* Разрешаем вертикальный скролл */
+  /* УДАЛЕНО: overflow: hidden; */
 }
 
 /* Верхняя панель управления */
@@ -34,6 +35,9 @@ body {
   align-items: center;
   border-bottom: 1px solid var(--border-color);
   overflow-x: auto;
+  position: sticky; /* Закрепляем верхнюю панель */
+  top: 0;
+  z-index: 100;
 }
 
 /* Кнопки и инпуты */
@@ -51,12 +55,14 @@ button, input:not([type=range]) {
 button:hover { background: #4a4a4a; border-color: var(--accent-color); }
 .danger-btn { border-color: var(--danger-color) !important; color: var(--danger-color) !important; }
 
-/* Ползунки */
+/* Ползунки: ГЛАВНЫЙ ФИКС ДЛЯ МОБИЛЬНОГО СКРОЛЛА */
 input[type=range] {
   -webkit-appearance: none;
   background: var(--border-color);
   height: 6px;
   border-radius: 3px;
+  /* НОВЫЙ ФИКС: Отключает прокрутку страницы при перетаскивании ползунка */
+  touch-action: none; 
 }
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -67,7 +73,6 @@ input[type=range]::-webkit-slider-thumb {
   cursor: pointer;
 }
 
-/* Группировка элементов */
 .control-group {
   display: flex;
   align-items: center;
@@ -82,11 +87,10 @@ input[type=range]::-webkit-slider-thumb {
 #main-content {
     display: flex;
     justify-content: center;
-    align-items: center;
     padding: 20px;
-    height: calc(100vh - 70px); /* Учитываем высоту верхней панели */
+    min-height: calc(100vh - 70px); /* Обеспечиваем минимальную высоту */
     box-sizing: border-box;
-    overflow: auto;
+    overflow: hidden; /* Основной контейнер без лишнего скролла, скролл только у BODY */
 }
 
 canvas {
@@ -94,21 +98,25 @@ canvas {
   border: 2px solid var(--accent-color);
   border-radius: 8px;
   box-shadow: 0 0 20px rgba(0, 140, 255, 0.2);
-  touch-action: none;
-  background: #fff; /* Холст должен быть белым для рисования */
+  /* ГЛАВНЫЙ ФИКС ДЛЯ ХОЛСТА: Отключает прокрутку при рисовании */
+  touch-action: none; 
+  background: #fff;
 }
 
 
 /* --- 3. ИНСТРУМЕНТЫ И ЦВЕТА (В СТИЛЕ Ibispaint) --- */
+/* Разрешаем панелям скролл, если они становятся слишком большими */
+#tools, #color-panel { overflow-y: auto; }
+
 #tools {
   position: fixed;
   left: 0;
-  top: 70px; /* Ниже верхней панели */
+  top: 70px;
   width: 70px;
   background: var(--control-bg);
   padding: 10px 5px;
   border-right: 1px solid var(--border-color);
-  display: flex;
+  display: none; /* Скрыты по умолчанию */
   flex-direction: column;
   gap: 15px;
   align-items: center;
@@ -121,7 +129,7 @@ canvas {
   border: none;
   color: var(--text-color);
   padding: 0;
-  font-size: 24px; /* Иконки */
+  font-size: 24px;
 }
 .tool-button.active {
     color: var(--accent-color);
@@ -149,26 +157,15 @@ canvas {
   border: 2px solid var(--text-color);
 }
 
-/* Группа слайдеров для RGB в стиле IbisPaint */
-.rgb-slider-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-.rgb-slider-group label {
-    font-size: 14px;
-    display: flex;
-    justify-content: space-between;
-}
-.rgb-slider-group input[type=range] {
-    margin: 0;
-    height: 10px;
-}
+.rgb-slider-group { display: flex; flex-direction: column; gap: 5px; }
+.rgb-slider-group label { font-size: 14px; display: flex; justify-content: space-between; }
+.rgb-slider-group input[type=range] { margin: 0; height: 10px; }
 #r { background: linear-gradient(to right, black, red); }
 #g { background: linear-gradient(to right, black, green); }
 #b { background: linear-gradient(to right, black, blue); }
 
-/* --- 4. ГАЛЕРЕЯ (ОСТАВЛЯЕМ СТИЛЬ ПОЛНОЭКРАННОГО МОДАЛЬНОГО ОКНА) --- */
+
+/* --- 4. ГАЛЕРЕЯ --- */
 #gallery { 
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0,0,0,0.95); 
@@ -181,19 +178,13 @@ canvas {
 .gallery-header { 
     display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; 
     border-bottom: 1px solid var(--border-color); padding-bottom: 10px;
+    position: sticky; top: 0; background: var(--main-bg); z-index: 2001; /* Закрепляем заголовок галереи */
 }
 .gallery-grid { 
     display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; 
 }
-.gallery-item { text-align: center; }
-.gallery-item img { 
-    height: 120px; border: 2px solid var(--accent-color); border-radius: 8px; cursor: pointer; 
-    transition: 0.2s; background: #fff;
-}
-.gallery-item img:hover { border-color: #0f0; transform: scale(1.05); }
-.gallery-item p { font-size: 12px; color: #aaa; margin: 5px 0; }
+.gallery-item img { height: 120px; }
 
-/* Лоадер */
 #loader { color: #0f0; font-weight: bold; margin-left: 10px; display: none; }
 </style>
 </head>
@@ -268,7 +259,7 @@ canvas {
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, doc, updateDoc, increment, deleteDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
   
-  // --- ВАШИ НАСТРОЙКИ FIREBASE ---
+  // --- ВАШИ НАСТРОЙКИ FIREBASE (ОСТАВЛЕНЫ ВАШИ КЛЮЧИ) ---
   const firebaseConfig = {
     apiKey: "AIzaSyCekB6vZ6qGAnvDO1LOA7OUGmA3zU1aLoA",
     authDomain: "suno-gallery.firebaseapp.com",
@@ -285,7 +276,7 @@ canvas {
   const db = getFirestore(app);
   const galleryRef = collection(db, "drawings"); 
 
-  // --- АВТОМАТИЧЕСКАЯ ГЕНЕРАЦИЯ USER ID (для ограничения голосов) ---
+  // --- АВТОМАТИЧЕСКАЯ ГЕНЕРАЦИЯ USER ID ---
   let USER_ID = localStorage.getItem("user_id");
   if (!USER_ID) {
       USER_ID = 'user_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
@@ -375,16 +366,15 @@ canvas {
       ctx.drawImage(tempCanvas, 0, 0, w, h);
   }
 
-  // Новая функция: Скачать на устройство
+  // Функция: Скачать на устройство
   window.downloadCanvas = () => {
     const link = document.createElement('a');
     link.download = 'suno_canvas_' + Date.now() + '.png';
     link.href = canvas.toDataURL("image/png");
     link.click();
-    alert("Рисунок сохранен!");
   }
 
-  // --- 3. ЛОГИКА РИСОВАНИЯ (с небольшими изменениями) ---
+  // --- 3. ЛОГИКА РИСОВАНИЯ ---
   function pos(e) {
     const rct = canvas.getBoundingClientRect();
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
@@ -394,7 +384,7 @@ canvas {
 
   canvas.onmousedown = canvas.ontouchstart = e => {
     window.drawing = true;
-    if(e.type === 'touchstart') document.body.style.overflow = "hidden";
+    // УДАЛЕНО: Управление document.body.style.overflow, чтобы не блокировать скролл страницы
     
     const p = pos(e);
     ctx.beginPath();
@@ -402,7 +392,6 @@ canvas {
 
     if(window.mode==="fill") {
         ctx.fillStyle = getColor();
-        // Используем глобальную композицию source-over для заливки
         ctx.globalCompositeOperation = "source-over";
         ctx.fillRect(0,0,canvas.width,canvas.height);
     }
@@ -411,12 +400,12 @@ canvas {
   canvas.onmouseup = canvas.ontouchend = () => {
     window.drawing = false;
     ctx.beginPath();
-    document.body.style.overflow = "auto";
+    // УДАЛЕНО: Управление document.body.style.overflow
   };
 
   canvas.onmousemove = canvas.ontouchmove = e => {
     if (!window.drawing) return;
-    e.preventDefault();
+    e.preventDefault(); // Запрещаем браузеру выполнять стандартные действия (например, масштабирование)
     const p = pos(e);
     const lineWidth = sizeEl.value;
     
@@ -427,11 +416,11 @@ canvas {
     }
     if (window.mode === "erase") {
       ctx.globalCompositeOperation = "destination-out";
-      ctx.lineWidth = lineWidth; // Используем тот же слайдер для размера ластика
+      ctx.lineWidth = lineWidth;
     }
     
     ctx.lineCap = "round";
-    ctx.lineJoin = "round"; // Для более гладких углов
+    ctx.lineJoin = "round";
     ctx.lineTo(p.x, p.y);
     ctx.stroke();
     ctx.beginPath();
@@ -440,13 +429,12 @@ canvas {
 
   window.clearCanvas = () => {
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    // Для полного сброса делаем фон белым (если он был прозрачным)
     ctx.globalCompositeOperation = "source-over";
     ctx.fillStyle = "#fff";
     ctx.fillRect(0,0,canvas.width,canvas.height);
   }
   
-  // При инициализации делаем холст белым
+  // Инициализация
   window.clearCanvas();
 
 
@@ -458,7 +446,6 @@ canvas {
     loader.style.display = "inline"; 
     
     try {
-        // Устанавливаем фон белым перед сохранением (для JPEG)
         const imgData = canvas.toDataURL("image/png");
         
         await addDoc(galleryRef, {
@@ -552,8 +539,13 @@ canvas {
                     const pic = new Image();
                     pic.src = data.image;
                     pic.onload = () => {
-                        window.clearCanvas(); // Сначала очищаем
+                        window.clearCanvas(); 
                         ctx.globalCompositeOperation = "source-over";
+                        // Устанавливаем размер холста по размеру загружаемой картинки
+                        canvas.width = pic.width;
+                        canvas.height = pic.height;
+                        document.getElementById('canvasW').value = pic.width;
+                        document.getElementById('canvasH').value = pic.height;
                         ctx.drawImage(pic, 0,0);
                     }
                     window.toggleGallery();
@@ -563,7 +555,6 @@ canvas {
             const currentVotes = data.deleteVotes || 0;
             const votersArray = data.voters || [];
 
-            // Кнопка Удаления
             const voteButton = document.createElement("button");
             voteButton.id = `button-${docId}`; 
             voteButton.style.marginTop = "5px";
@@ -572,7 +563,6 @@ canvas {
             voteButton.textContent = `Удалить`; 
             voteButton.onclick = () => window.voteToDelete(docId, currentVotes, votersArray);
             
-            // Счетчик
             const voteCounter = document.createElement("p");
             voteCounter.id = `votes-${docId}`;
             voteCounter.style.fontSize = "12px";
@@ -580,7 +570,6 @@ canvas {
             voteCounter.style.color = "#f00";
             voteCounter.textContent = `🚨 ${currentVotes}/10`;
             
-            // Проверка голосования
             if (votersArray.includes(USER_ID)) {
                  voteButton.disabled = true;
                  voteButton.textContent = "Уже проголосовано";
@@ -600,7 +589,7 @@ canvas {
 
   // Запуск
   window.updateColorPreview();
-  window.toggleToolsPanel(); // Открываем инструменты по умолчанию
+  window.toggleToolsPanel(); 
 </script>
 
 </body>
