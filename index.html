@@ -19,13 +19,11 @@ body {
 .size-inputs { display: flex; align-items: center; gap: 5px; }
 .size-inputs input { width: 45px; background: #000; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 5px; }
 button { background: var(--btn-bg); color: #fff; border: 1px solid #555; border-radius: 5px; padding: 8px 12px; font-size: 14px; cursor: pointer; }
-button:disabled { opacity: 0.3; }
 #viewport { flex-grow: 1; position: relative; background: #181818; overflow: hidden; touch-action: none; }
-canvas { position: absolute; background: #fff; transform-origin: 0 0; }
+canvas { position: absolute; background: #fff; transform-origin: 0 0; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
 .floating-panel {
   position: fixed; top: 70px; background: rgba(30,30,30,0.95); border: 1px solid #666;
-  border-radius: 8px; padding: 15px; display: none; flex-direction: column; gap: 10px; z-index: 10000;
-  max-height: 80vh; overflow-y: auto; width: 220px;
+  border-radius: 8px; padding: 15px; display: none; flex-direction: column; gap: 10px; z-index: 10000; width: 220px;
 }
 .preview-container { 
     display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; 
@@ -34,13 +32,11 @@ canvas { position: absolute; background: #fff; transform-origin: 0 0; }
 #color-preview { width: 100%; height: 25px; border: 1px solid #fff; border-radius: 3px; }
 #size-preview-box { 
     width: 100%; height: 80px; background: #111; border-radius: 4px; 
-    display: flex; align-items: center; justify-content: center; position: relative;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
 }
-#size-indicator { 
-    background: #fff; border-radius: 50%; display: block;
-}
+#size-indicator { background: #fff; border-radius: 50%; }
 .label-row { display: flex; justify-content: space-between; font-size: 13px; color: #eee; margin-top: 5px; font-weight: bold; }
-input[type=range] { width: 100%; height: 25px; cursor: pointer; margin: 0; }
+input[type=range] { width: 100%; height: 25px; cursor: pointer; }
 #gallery-overlay { position: fixed; inset: 0; background: #000; z-index: 20000; display: none; flex-direction: column; padding: 15px; }
 #gallery-content { margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; overflow-y: auto; }
 .art-card { background: #222; padding: 5px; border-radius: 6px; text-align: center; }
@@ -61,7 +57,7 @@ input[type=range] { width: 100%; height: 25px; cursor: pointer; margin: 0; }
   <button onclick="toggle('lang-panel')">🌐</button>
   <button onclick="toggleGallery()" id="btn-global">🌍 Глобально</button>
   <button onclick="saveToCloud()" style="color:var(--accent)" id="btn-save">☁️ Запустить</button>
-  <button onclick="downloadImg()">💾</button>
+  <button id="btn-download" onclick="downloadImg()">💾</button>
   <button onclick="resetView()">🎯</button>
   <button onclick="clearCanvas()" style="color:red">🗑</button>
 </div>
@@ -72,18 +68,13 @@ input[type=range] { width: 100%; height: 25px; cursor: pointer; margin: 0; }
   <button onclick="setMode('draw')" id="m-brush">✏️ Кисть</button>
   <button onclick="setMode('erase')" id="m-erase">🧽 Ластик</button>
   <button onclick="setMode('fill')" id="m-fill">⬛ Заливка</button>
-  <button onclick="document.getElementById('fileIn').click()" id="m-photo">📁 Фото</button>
-  <input type="file" id="fileIn" hidden accept="image/*" onchange="handleImage(event)">
 </div>
 
 <div id="colors-panel" class="floating-panel" style="right:10px">
   <div class="preview-container">
     <div id="color-preview"></div>
-    <div id="size-preview-box">
-        <div id="size-indicator"></div>
-    </div>
+    <div id="size-preview-box"><div id="size-indicator"></div></div>
   </div>
-  
   <div class="label-row"><span id="lbl-size">Размер</span><span id="val-size">5</span></div>
   <input type="range" id="size" min="1" max="100" value="5" oninput="updColor()">
   
@@ -97,9 +88,7 @@ input[type=range] { width: 100%; height: 25px; cursor: pointer; margin: 0; }
   <input type="range" id="b" max="255" value="0" oninput="updColor()">
 </div>
 
-<div id="viewport">
-  <canvas id="canvas" width="360" height="500"></canvas>
-</div>
+<div id="viewport"><canvas id="canvas" width="360" height="500"></canvas></div>
 
 <div id="gallery-overlay">
   <button onclick="toggleGallery()" id="btn-close-gallery">❌ Закрыть</button>
@@ -108,7 +97,7 @@ input[type=range] { width: 100%; height: 25px; cursor: pointer; margin: 0; }
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, doc, updateDoc, increment, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCekB6vZ6qGAnvDO1LOA7OUGmA3zU1aLoA",
@@ -120,17 +109,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const galleryRef = collection(db, "drawings");
-let USER_ID = localStorage.getItem("u_id") || ('u'+Math.random());
-localStorage.setItem("u_id", USER_ID);
-
-let localReported = new Set(); 
 
 window.saveToCloud = async () => {
     if(!confirm(window.t('confirm'))) return;
     try {
-        await addDoc(galleryRef, { image: canvas.toDataURL('image/jpeg', 0.6), date: Date.now(), reports: 0, reporters: [] });
+        await addDoc(galleryRef, { image: canvas.toDataURL('image/jpeg', 0.5), date: Date.now() });
         alert(window.t('success'));
-    } catch(e) { alert("Error"); }
+    } catch(e) { alert("Error: " + e.message); }
 };
 
 window.loadGlobalGallery = async () => {
@@ -140,17 +125,9 @@ window.loadGlobalGallery = async () => {
     box.innerHTML = "";
     snap.forEach(d => {
         const data = d.data();
-        const isReported = localReported.has(d.id) || (data.reporters && data.reporters.includes(USER_ID));
         const div = document.createElement("div");
         div.className = "art-card";
-        div.innerHTML = `<img src="${data.image}"><button ${isReported?'disabled':''} class="report-btn">${isReported ? window.t('reported') : window.t('report')} (${data.reports||0})</button>`;
-        div.querySelector("button").onclick = async (e) => {
-            if(!confirm(window.t('confirm_report'))) return;
-            await updateDoc(doc(db, "drawings", d.id), { reports: increment(1), reporters: arrayUnion(USER_ID) });
-            localReported.add(d.id);
-            e.target.disabled = true;
-            e.target.innerText = window.t('reported');
-        };
+        div.innerHTML = `<img src="${data.image}"><button>${window.t('report')}</button>`;
         box.appendChild(div);
     });
 };
@@ -158,21 +135,12 @@ window.loadGlobalGallery = async () => {
 
 <script>
 const translations = {
-    "az": { name: "Azərbaycan", global: "🌍 Qlobal", save: "☁️ Yayımla", brush: "✏️ Fırça", erase: "🧽 Pozan", fill: "⬛ Doldurma", photo: "📁 Şəkil", close: "❌ Bağla", confirm: "Dərc edilsin?", success: "Dərc edildi!", loading: "Yüklənir...", report: "Şikayət", reported: "Şikayət edildi", confirm_report: "Şikayət edilsin?", size: "Ölçü" },
-    "de": { name: "Deutsch", global: "🌍 Global", save: "☁️ Starten", brush: "✏️ Pinsel", erase: "🧽 Radierer", fill: "⬛ Füllen", photo: "📁 Foto", close: "❌ Schließen", confirm: "Veröffentlichen?", success: "Veröffentlicht!", loading: "Laden...", report: "Melden", reported: "Gemeldet", confirm_report: "Meldung bestätigen?", size: "Größe" },
-    "en": { name: "English", global: "🌍 Global", save: "☁️ Launch", brush: "✏️ Brush", erase: "🧽 Eraser", fill: "⬛ Fill", photo: "📁 Photo", close: "❌ Close", confirm: "Publish?", success: "Published!", loading: "Loading...", report: "Report", reported: "Reported", confirm_report: "Confirm report?", size: "Size" },
-    "es": { name: "Español", global: "🌍 Global", save: "☁️ Lanzar", brush: "✏️ Pincel", erase: "🧽 Borrador", fill: "⬛ Rellenar", photo: "📁 Foto", close: "❌ Cerrar", confirm: "¿Publicar?", success: "¡Publicado!", loading: "Cargando...", report: "Reportar", reported: "Reportado", confirm_report: "¿Confirmar reporte?", size: "Tamaño" },
-    "fr": { name: "Français", global: "🌍 Global", save: "☁️ Publier", brush: "✏️ Pinceau", erase: "🧽 Gomme", fill: "⬛ Remplir", photo: "📁 Photo", close: "❌ Fermer", confirm: "Publier?", success: "Publié!", loading: "Chargement...", report: "Signaler", reported: "Signalé", confirm_report: "Confirmer le signalement?", size: "Taille" },
-    "it": { name: "Italiano", global: "🌍 Globale", save: "☁️ Avvia", brush: "✏️ Pennello", erase: "🧽 Gomma", fill: "⬛ Riempi", photo: "📁 Foto", close: "❌ Chiudi", confirm: "Pubblicare?", success: "Pubblicato!", loading: "Caricamento...", report: "Segnala", reported: "Segnalato", confirm_report: "Confermi la segnalazione?", size: "Dimensione" },
-    "jp": { name: "日本語", global: "🌍 グローバル", save: "☁️ 公開する", brush: "✏️ ブラシ", erase: "🧽 消しゴム", fill: "⬛ 塗りつぶし", photo: "📁 写真", close: "❌ 閉じる", confirm: "公開しますか？", success: "公開されました！", loading: "読み込み中...", report: "通報", reported: "通報済み", confirm_report: "通報しますか？", size: "サイズ" },
-    "ko": { name: "한국어", global: "🌍 글로벌", save: "☁️ 게시하기", brush: "✏️ 브러시", erase: "🧽 지우개", fill: "⬛ 채우기", photo: "📁 사진", close: "❌ 닫기", confirm: "게시하시겠습니까?", success: "게시되었습니다!", loading: "로딩 중...", report: "신고", reported: "신고됨", confirm_report: "신고하시겠습니까?", size: "크기" },
-    "pt": { name: "Português", global: "🌍 Global", save: "☁️ Iniciar", brush: "✏️ Pincel", erase: "🧽 Borracha", fill: "⬛ Preencher", photo: "📁 Foto", close: "❌ Fechar", confirm: "Publicar?", success: "Publicado!", loading: "Carregando...", report: "Denunciar", reported: "Denunciado", confirm_report: "Confirmar denúncia?", size: "Tamanho" },
-    "ru": { name: "Русский", global: "🌍 Глобально", save: "☁️ Запустить", brush: "✏️ Кисть", erase: "🧽 Ластик", fill: "⬛ Заливка", photo: "📁 Фото", close: "❌ Закрыть", confirm: "Опубликовать?", success: "Опубликовано!", loading: "Загрузка...", report: "Жалоба", reported: "Отправлено", confirm_report: "Пожаловаться?", size: "Размер" },
-    "tr": { name: "Türkçe", global: "🌍 Küresel", save: "☁️ Başlat", brush: "✏️ Fırça", erase: "🧽 Silgi", fill: "⬛ Doldur", photo: "📁 Fotoğraf", close: "❌ Kapat", confirm: "Yayınlansın mı?", success: "Yayınlandı!", loading: "Yükleniyor...", report: "Bildir", reported: "Bildirildi", confirm_report: "Bildirmeyi onayla?", size: "Boyut" },
-    "zh": { name: "中文", global: "🌍 全球", save: "☁️ 发布", brush: "✏️ 画笔", erase: "🧽 橡皮擦", fill: "⬛ 填充", photo: "📁 照片", close: "❌ 关闭", confirm: "确定发布吗？", success: "已发布！", loading: "加载中...", report: "举报", reported: "已举报", confirm_report: "确定举报吗？", size: "大小" }
+    "az": { name: "Azərbaycan", global: "🌍 Qlobal", save: "☁️ Yayımla", brush: "✏️ Fırça", erase: "🧽 Pozan", fill: "⬛ Doldurma", close: "❌ Bağla", confirm: "Dərc edilsin?", success: "Dərc edildi!", loading: "Yüklənir...", report: "Şikayət", size: "Ölçü" },
+    "ru": { name: "Русский", global: "🌍 Глобально", save: "☁️ Запустить", brush: "✏️ Кисть", erase: "🧽 Ластик", fill: "⬛ Заливка", close: "❌ Закрыть", confirm: "Опубликовать?", success: "Опубликовано!", loading: "Загрузка...", report: "Жалоба", size: "Размер" },
+    "en": { name: "English", global: "🌍 Global", save: "☁️ Launch", brush: "✏️ Brush", erase: "🧽 Eraser", fill: "⬛ Fill", close: "❌ Close", confirm: "Publish?", success: "Published!", loading: "Loading...", report: "Report", size: "Size" }
 };
 
-let currentLang = localStorage.getItem('lang') || 'ru';
+let currentLang = 'ru';
 window.t = (key) => translations[currentLang][key] || key;
 
 function applyLang() {
@@ -181,24 +149,16 @@ function applyLang() {
     document.getElementById('m-brush').innerText = window.t('brush');
     document.getElementById('m-erase').innerText = window.t('erase');
     document.getElementById('m-fill').innerText = window.t('fill');
-    document.getElementById('m-photo').innerText = window.t('photo');
-    document.getElementById('btn-close-gallery').innerText = window.t('close');
     document.getElementById('lbl-size').innerText = window.t('size');
 }
 
-function initLangMenu() {
+function initLang() {
     const panel = document.getElementById('lang-panel');
-    const sortedKeys = Object.keys(translations).sort((a, b) => translations[a].name.localeCompare(translations[b].name));
-    sortedKeys.forEach(lang => {
+    Object.keys(translations).forEach(lang => {
         const btn = document.createElement('button');
         btn.innerText = translations[lang].name;
         btn.style.width = "100%";
-        btn.onclick = () => {
-            currentLang = lang;
-            localStorage.setItem('lang', lang);
-            applyLang();
-            toggle('lang-panel');
-        };
+        btn.onclick = () => { currentLang = lang; applyLang(); toggle('lang-panel'); };
         panel.appendChild(btn);
     });
 }
@@ -210,23 +170,14 @@ const preview = document.getElementById("color-preview");
 const sizeInd = document.getElementById("size-indicator");
 
 let scale = 1, pX = 0, pY = 0, mode = "draw", isDrawing = false, lastX = 0, lastY = 0;
-let history = [];
-let historyStep = -1;
+let history = []; let historyStep = -1;
 
 function updColor() {
-    const r = document.getElementById('r').value;
-    const g = document.getElementById('g').value;
-    const b = document.getElementById('b').value;
-    const s = document.getElementById('size').value;
-    
+    const r = document.getElementById('r').value, g = document.getElementById('g').value, b = document.getElementById('b').value, s = document.getElementById('size').value;
     const color = `rgb(${r},${g},${b})`;
     preview.style.background = color;
-    
-    // Индикатор размера
     sizeInd.style.background = color;
-    sizeInd.style.width = s + "px";
-    sizeInd.style.height = s + "px";
-    
+    sizeInd.style.width = s + "px"; sizeInd.style.height = s + "px";
     document.getElementById('val-r').innerText = r;
     document.getElementById('val-g').innerText = g;
     document.getElementById('val-b').innerText = b;
@@ -258,54 +209,36 @@ function redo() {
     }
 }
 
-function toggle(id) {
-    const el = document.getElementById(id);
-    const isVisible = el.style.display === 'flex';
-    document.querySelectorAll('.floating-panel').forEach(p => p.style.display = 'none');
-    el.style.display = isVisible ? 'none' : 'flex';
+function downloadImg() {
+    const btn = document.getElementById('btn-download');
+    const oldText = btn.innerText;
+    btn.innerText = "⌛";
+
+    try {
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        const byteString = atob(dataUrl.split(',')[1]);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+        const blob = new Blob([ab], {type: 'image/jpeg'});
+        
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `art_${Date.now()}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        
+        setTimeout(() => {
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(blobUrl);
+            btn.innerText = oldText;
+        }, 200);
+    } catch (e) {
+        alert("Ошибка: " + e.message);
+        btn.innerText = oldText;
+    }
 }
-
-function toggleGallery() {
-    const gal = document.getElementById("gallery-overlay");
-    gal.style.display = (gal.style.display === 'flex') ? 'none' : 'flex';
-    if(gal.style.display === 'flex') window.loadGlobalGallery();
-}
-
-function setMode(m) { mode = m; toggle('tools-panel'); }
-
-function clearCanvas() { 
-    if(!confirm("Reset?")) return;
-    ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,canvas.width,canvas.height); 
-    saveHistory();
-}
-
-function resizeCanvas() {
-    const w = document.getElementById('inpW').value, h = document.getElementById('inpH').value;
-    const temp = canvas.toDataURL();
-    canvas.width = w; canvas.height = h;
-    const img = new Image();
-    img.onload = () => { ctx.fillStyle = "#fff"; ctx.fillRect(0,0,w,h); ctx.drawImage(img, 0, 0); saveHistory(); };
-    img.src = temp;
-    resetView();
-}
-
-function handleImage(e) {
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-        const img = new Image();
-        img.onload = () => { ctx.drawImage(img, 0, 0, canvas.width, canvas.height); saveHistory(); };
-        img.src = ev.target.result;
-    };
-    reader.readAsDataURL(e.target.files[0]);
-}
-
-function resetView() {
-    scale = Math.min(viewport.clientWidth / canvas.width, viewport.clientHeight / canvas.height) * 0.9;
-    pX = (viewport.clientWidth - canvas.width * scale) / 2; pY = 20;
-    updateTransform();
-}
-
-function updateTransform() { canvas.style.transform = `translate(${pX}px, ${pY}px) scale(${scale})`; }
 
 function getPos(e) {
     const rect = viewport.getBoundingClientRect();
@@ -313,13 +246,8 @@ function getPos(e) {
     return { x: (t.clientX - rect.left - pX) / scale, y: (t.clientY - rect.top - pY) / scale };
 }
 
-let sD = 0, sS = 1, sX = 0, sY = 0;
 viewport.addEventListener('touchstart', e => {
-    if(e.touches.length === 2) {
-        isDrawing = false;
-        sD = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-        sS = scale; sX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - pX; sY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - pY;
-    } else {
+    if(e.touches.length === 1) {
         isDrawing = true;
         const p = getPos(e); lastX = p.x; lastY = p.y;
         if(mode === 'fill') { ctx.fillStyle = preview.style.background; ctx.fillRect(0,0,canvas.width,canvas.height); saveHistory(); }
@@ -327,37 +255,43 @@ viewport.addEventListener('touchstart', e => {
 }, {passive: false});
 
 viewport.addEventListener('touchmove', e => {
-    e.preventDefault();
-    if(e.touches.length === 2) {
-        const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-        scale = sS * (d / sD);
-        pX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - sX;
-        pY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - sY;
-        updateTransform();
-    } else if(isDrawing) {
+    if(isDrawing && e.touches.length === 1) {
         const p = getPos(e);
-        ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y);
-        ctx.lineCap = "round"; ctx.lineWidth = document.getElementById('size').value;
+        ctx.beginPath(); ctx.lineCap = "round"; 
+        ctx.lineWidth = document.getElementById('size').value;
         ctx.strokeStyle = (mode === 'erase') ? '#ffffff' : preview.style.background;
-        ctx.stroke(); lastX = p.x; lastY = p.y;
+        ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke();
+        lastX = p.x; lastY = p.y;
     }
 }, {passive: false});
 
 window.addEventListener('touchend', () => { if(isDrawing) saveHistory(); isDrawing = false; });
 
-ctx.fillStyle = "#fff"; ctx.fillRect(0,0,360,500);
-saveHistory();
-initLangMenu();
-applyLang();
-updColor();
-setTimeout(resetView, 200);
+function toggle(id) {
+    const el = document.getElementById(id);
+    const vis = el.style.display === 'flex';
+    document.querySelectorAll('.floating-panel').forEach(p => p.style.display = 'none');
+    el.style.display = vis ? 'none' : 'flex';
+}
 
-window.downloadImg = () => {
-    const link = document.createElement('a');
-    link.download = 'art.jpg';
-    link.href = canvas.toDataURL('image/jpeg');
-    link.click();
-};
+function toggleGallery() {
+    const g = document.getElementById('gallery-overlay');
+    g.style.display = g.style.display === 'flex' ? 'none' : 'flex';
+    if(g.style.display === 'flex') window.loadGlobalGallery();
+}
+
+function setMode(m) { mode = m; toggle('tools-panel'); }
+function clearCanvas() { if(confirm("Clear?")) { ctx.fillStyle="#fff"; ctx.fillRect(0,0,canvas.width,canvas.height); saveHistory(); } }
+function resizeCanvas() { 
+    canvas.width = document.getElementById('inpW').value; 
+    canvas.height = document.getElementById('inpH').value; 
+    ctx.fillStyle="#fff"; ctx.fillRect(0,0,canvas.width,canvas.height); resetView();
+}
+function resetView() { scale = 0.8; pX = 20; pY = 20; updateTransform(); }
+function updateTransform() { canvas.style.transform = `translate(${pX}px, ${pY}px) scale(${scale})`; }
+
+ctx.fillStyle = "#fff"; ctx.fillRect(0,0,360,500);
+initLang(); applyLang(); updColor(); saveHistory(); resetView();
 </script>
 </body>
 </html>
