@@ -2,10 +2,10 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-<title>Suno Global Canvas (Mobile Pro 2.2)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Suno Global Canvas (Pro Zoom)</title>
 <style>
-/* --- 1. СТИЛЬ IbisPaint X (ТЕМНЫЙ, СОВРЕМЕННЫЙ) --- */
+/* --- 1. СТИЛЬ (ТЕМНЫЙ, СОВРЕМЕННЫЙ) --- */
 :root {
   --main-bg: #121212;
   --top-bar-bg: #222222;
@@ -21,176 +21,218 @@ body {
   background: var(--main-bg);
   color: var(--text-color);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  overflow-y: auto; 
-  -webkit-tap-highlight-color: transparent; /* Оптимизация для мобильных */
+  overflow: hidden; /* Важно: отключаем скролл всей страницы */
+  touch-action: none; /* Отключаем стандартные жесты браузера */
 }
 
-/* Верхняя панель управления */
+/* Верхняя панель */
 #top {
   background: var(--top-bar-bg);
-  padding: 8px; 
+  padding: 8px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: flex-start;
+  flex-wrap: nowrap; /* В одну строку с прокруткой */
+  gap: 8px;
   align-items: center;
   border-bottom: 1px solid var(--border-color);
   overflow-x: auto;
-  position: sticky;
+  position: absolute; /* Фиксируем сверху */
   top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
   z-index: 100;
+  box-sizing: border-box;
 }
 
-/* Кнопки и инпуты: УВЕЛИЧЕННЫЙ РАЗМЕР ДЛЯ ТЕЛЕФОНА */
+/* Скрываем скроллбар меню, но оставляем прокрутку */
+#top::-webkit-scrollbar { display: none; }
+
 button, input:not([type=range]) {
   background: var(--control-bg);
   color: var(--text-color);
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  padding: 10px 14px;
-  font-size: 15px;
+  padding: 8px 12px;
+  font-size: 14px;
   cursor: pointer;
-  transition: 0.2s;
-  flex-shrink: 0;
+  flex-shrink: 0; /* Чтобы кнопки не сжимались */
 }
 button:hover { background: #4a4a4a; border-color: var(--accent-color); }
 .danger-btn { border-color: var(--danger-color) !important; color: var(--danger-color) !important; }
 
-/* Ползунки: ФИКС ДЛЯ СКРОЛЛА */
+/* Ползунки */
 input[type=range] {
   -webkit-appearance: none;
   background: var(--border-color);
-  height: 8px;
+  height: 6px;
   border-radius: 4px;
-  /* УДАЛЕНО: touch-action: none; - Теперь управляем в JS */
+  width: 100%;
+  margin: 5px 0;
 }
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--accent-color);
   cursor: pointer;
+  border: 2px solid #fff;
 }
 
 .control-group {
   display: flex;
   align-items: center;
   gap: 5px;
-  margin-right: 10px;
+  flex-shrink: 0;
 }
-.control-group label { font-size: 13px; color: #aaa; }
-.control-group input[type=number] { width: 60px; text-align: center; padding: 5px; }
+.control-group input[type=number] { width: 50px; text-align: center; padding: 5px; }
 
 
-/* --- 2. ЦЕНТРАЛЬНАЯ ОБЛАСТЬ И ХОЛСТ --- */
-#main-content {
+/* --- 2. ГЛАВНАЯ ОБЛАСТЬ (VIEWPORT) --- */
+#viewport {
+    position: absolute;
+    top: 60px; /* Высота хедера */
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #1a1a1a;
+    overflow: hidden; /* Скрываем вылезающий холст */
     display: flex;
     justify-content: center;
-    padding: 20px;
-    min-height: calc(100vh - 70px);
-    box-sizing: border-box;
-    overflow: hidden; /* Скрываем полосы прокрутки для главной области */
+    align-items: center;
+    touch-action: none;
 }
 
+/* Холст */
 canvas {
   display: block;
-  border: 2px solid var(--accent-color);
-  border-radius: 8px;
-  box-shadow: 0 0 20px rgba(0, 140, 255, 0.2);
   background: #fff;
-  /* КРИТИЧЕСКИЙ ФИКС: отключаем выделение, но разрешаем скролл браузера по умолчанию */
-  user-select: none;
-  -webkit-user-select: none;
-  touch-action: pan-y; /* Разрешает вертикальный скролл браузера по умолчанию */
+  box-shadow: 0 0 30px rgba(0,0,0,0.5);
+  /* Трансформация происходит через JS */
+  transform-origin: 0 0; 
 }
 
 
 /* --- 3. ИНСТРУМЕНТЫ И ЦВЕТА --- */
 #tools {
-  position: fixed;
-  left: 0;
-  top: 60px; 
-  width: 55px; 
+  position: absolute;
+  left: 10px;
+  top: 70px;
+  width: 50px;
   background: var(--control-bg);
-  padding: 10px 0;
-  border-right: 1px solid var(--border-color);
-  display: none; /* Скрыто по умолчанию */
+  padding: 10px 5px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  display: none;
   flex-direction: column;
-  gap: 20px;
+  gap: 15px;
   align-items: center;
   z-index: 50;
-  height: calc(100vh - 60px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 }
 
 .tool-button {
-  padding: 10px;
-  font-size: 28px;
+  font-size: 24px;
+  background: transparent;
+  border: none;
+  padding: 5px;
 }
 .tool-button.active {
     color: var(--accent-color);
-    text-shadow: 0 0 5px var(--accent-color);
+    text-shadow: 0 0 8px var(--accent-color);
+    transform: scale(1.1);
 }
 
 #color-panel {
     display: none;
-    position: fixed;
-    right: 0;
-    top: 60px;
-    width: 220px; 
-    background: var(--control-bg);
+    position: absolute;
+    right: 10px;
+    top: 70px;
+    width: 240px;
+    background: rgba(30, 30, 30, 0.95);
+    backdrop-filter: blur(10px);
     padding: 15px;
-    border-left: 1px solid var(--border-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     z-index: 50;
-    height: calc(100vh - 60px);
+    max-height: calc(100vh - 100px);
     overflow-y: auto;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
 }
-#colorPreview { width: 100%; height: 50px; border-radius: 6px; border: 2px solid var(--text-color); background: rgb(0,0,0); }
 
-.rgb-slider-group { display: flex; flex-direction: column; gap: 5px; }
-.rgb-slider-group label { font-size: 14px; display: flex; justify-content: space-between; }
+.rgb-slider-group {
+    margin-bottom: 8px;
+}
+.rgb-slider-group label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #ccc;
+    margin-bottom: 2px;
+}
 
+#colorPreview {
+    height: 30px;
+    width: 100%;
+    border-radius: 4px;
+    border: 1px solid #fff;
+    margin-bottom: 10px;
+}
 
 /* --- 4. ГАЛЕРЕЯ --- */
 #gallery { 
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0,0,0,0.95); 
-  padding: 10px; 
+  padding: 20px; 
   display: none; 
   flex-direction: column;
   overflow-y: auto; 
   z-index: 2000;
 }
-.gallery-header { 
-    padding: 10px 0;
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 15px;
+    padding-bottom: 50px;
+}
+.gallery-item {
+    background: #222;
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
 }
 .gallery-item img { 
-    height: 100px;
+    width: 100%;
+    height: 120px;
+    object-fit: contain;
+    background: #333;
+    border-radius: 4px;
 }
 
-#loader { color: #0f0; font-weight: bold; margin-left: 10px; display: none; }
+#loader { color: #0f0; font-weight: bold; margin-left: 10px; display: none; font-size: 12px;}
 </style>
 </head>
 <body>
 
 <div id="top">
-  <button onclick="window.toggleToolsPanel()">⚙️ Инструменты</button>
-  <button onclick="window.toggleColorPanel()">🌈 Цвет/Размер</button>
-  <button onclick="window.toggleGallery()">🌍 Глобальная Галерея</button>
-  <button onclick="window.saveToFirebase()" style="border-color: var(--danger-color); color: var(--danger-color);">☁️ В Глобал!</button>
-  <button onclick="window.downloadCanvas()">💾 Скачать на устройство</button>
-  <button onclick="window.clearCanvas()" class="danger-btn">🗑 Стереть</button>
+  <button onclick="window.toggleToolsPanel()">🛠 Инструменты</button>
+  <button onclick="window.toggleColorPanel()">🎨 Цвет/Размер</button>
+  <button onclick="window.toggleGallery()">🌍 Галерея</button>
+  <div style="width: 1px; height: 30px; background: #555; margin: 0 5px;"></div>
+  <button onclick="window.saveToFirebase()" style="color: var(--danger-color);">☁️ Публикация</button>
+  <button onclick="window.downloadCanvas()">💾 Сохранить</button>
+  <button onclick="window.clearCanvas()" class="danger-btn">🗑</button>
   <span id="loader">Загрузка...</span>
 
     <div class="control-group">
-        <label>Ширина:</label>
-        <input type="number" id="canvasW" min="100" max="2000" value="360" onchange="window.resizeCanvas()">
+        <label>W:</label>
+        <input type="number" id="canvasW" value="360" onchange="window.resizeCanvas()">
     </div>
     <div class="control-group">
-        <label>Высота:</label>
-        <input type="number" id="canvasH" min="100" max="2000" value="500" onchange="window.resizeCanvas()">
+        <label>H:</label>
+        <input type="number" id="canvasH" value="500" onchange="window.resizeCanvas()">
     </div>
 </div>
 
@@ -198,27 +240,31 @@ canvas {
     <button class="tool-button active" onclick="window.setMode('draw', this)">✏️</button>
     <button class="tool-button" onclick="window.setMode('erase', this)">🧽</button>
     <button class="tool-button" onclick="window.setMode('fill', this)">⬛</button>
-</div>
+    <button class="tool-button" onclick="window.resetView()">🎯</button> </div>
 
 <div id="color-panel">
-    <h3>Панель цвета и размера</h3>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0; font-size:16px;">Настройки</h3>
+        <button onclick="window.toggleColorPanel()" style="padding:2px 8px;">✕</button>
+    </div>
+    <hr style="border-color:#444; margin:10px 0;">
 
     <div id="colorPreview"></div>
     
     <div class="rgb-slider-group">
-        <label>Красный (R): <span id="r_val">0</span></label>
+        <label>R: <span id="r_val">0</span></label>
         <input type="range" id="r" min="0" max="255" value="0" oninput="window.updateColorPreview()">
     </div>
     <div class="rgb-slider-group">
-        <label>Зеленый (G): <span id="g_val">0</span></label>
+        <label>G: <span id="g_val">0</span></label>
         <input type="range" id="g" min="0" max="255" value="0" oninput="window.updateColorPreview()">
     </div>
     <div class="rgb-slider-group">
-        <label>Синий (B): <span id="b_val">0</span></label>
+        <label>B: <span id="b_val">0</span></label>
         <input type="range" id="b" min="0" max="255" value="0" oninput="window.updateColorPreview()">
     </div>
     
-    <hr style="border-color: #555; margin: 15px 0;">
+    <hr style="border-color: #444; margin: 10px 0;">
 
     <div class="rgb-slider-group">
         <label>Размер кисти: <span id="size_val">5</span></label>
@@ -226,25 +272,22 @@ canvas {
     </div>
 </div>
 
-
-<div id="main-content">
+<div id="viewport">
     <canvas id="canvas" width="360" height="500"></canvas>
 </div>
 
 <div id="gallery">
-    <div class="gallery-header">
-        <h2 style="margin:0;">🌍 Рисунки игроков</h2>
+    <div class="gallery-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h2 style="margin:0;">🌍 Глобальная Галерея</h2>
         <button onclick="window.toggleGallery()">❌ Закрыть</button>
     </div>
     <div id="galleryContent" class="gallery-grid"></div>
 </div>
 
 <script type="module">
-  // Импортируем Firebase
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, doc, updateDoc, increment, deleteDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
   
-  // --- ВАШИ НАСТРОЙКИ FIREBASE ---
   const firebaseConfig = {
     apiKey: "AIzaSyCekB6vZ6qGAnvDO1LOA7OUGmA3zU1aLoA",
     authDomain: "suno-gallery.firebaseapp.com",
@@ -254,23 +297,22 @@ canvas {
     appId: "1:314284584278:web:97c5b91180562fd1c93af7",
     measurementId: "G-2J4PNZX4CV"
   };
-  // -----------------------
 
-  // Инициализация
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   const galleryRef = collection(db, "drawings"); 
 
-  // --- АВТОМАТИЧЕСКАЯ ГЕНЕРАЦИЯ USER ID ---
   let USER_ID = localStorage.getItem("user_id");
   if (!USER_ID) {
-      USER_ID = 'user_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      USER_ID = 'user_' + Math.random().toString(36).substring(2, 15);
       localStorage.setItem("user_id", USER_ID);
   }
 
-  // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ И ЭЛЕМЕНТЫ ---
+  // Элементы
   const canvas = document.getElementById("canvas");
   const ctx = canvas.getContext("2d");
+  const viewport = document.getElementById("viewport");
+  
   const colorPreview = document.getElementById("colorPreview");
   const rEl = document.getElementById("r");
   const gEl = document.getElementById("g");
@@ -279,28 +321,51 @@ canvas {
   const loader = document.getElementById("loader");
   const toolButtons = document.querySelectorAll('.tool-button');
 
-  window.drawing = false;
+  // Состояние
   window.mode = "draw";
-  window.isOneFingerDraw = false; // Флаг для рисования одним пальцем
-  window.lastTouchCount = 0; // Для отслеживания смены жеста
+  
+  // --- ПЕРЕМЕННЫЕ ДЛЯ ЗУМА И ПАНА (IBIS STYLE) ---
+  let scale = 1;
+  let panning = false;
+  let pointX = 0;
+  let pointY = 0;
+  let startX = 0;
+  let startY = 0;
+  let lastX = 0;
+  let lastY = 0;
+  let isGesture = false;
+  let startDist = 0;
+  let startScale = 1;
 
-  // --- 1. ФУНКЦИИ УПРАВЛЕНИЯ UI ---
+  // Инициализация позиции холста по центру
+  function centerCanvas() {
+      const vw = viewport.clientWidth;
+      const vh = viewport.clientHeight;
+      pointX = (vw - canvas.width) / 2;
+      pointY = (vh - canvas.height) / 2;
+      updateTransform();
+  }
+  
+  window.resetView = () => {
+      scale = 1;
+      centerCanvas();
+  }
+
+  // --- ИНТЕРФЕЙС ---
 
   window.toggleToolsPanel = () => {
-      document.getElementById("tools").style.display = 
-        (getComputedStyle(document.getElementById("tools")).display === "flex") ? "none" : "flex";
+      const el = document.getElementById("tools");
+      el.style.display = (getComputedStyle(el).display === "flex") ? "none" : "flex";
   }
   
   window.toggleColorPanel = () => {
-      document.getElementById("color-panel").style.display = 
-        (getComputedStyle(document.getElementById("color-panel")).display === "flex") ? "none" : "flex";
+      const el = document.getElementById("color-panel");
+      el.style.display = (getComputedStyle(el).display === "flex") ? "none" : "flex";
   }
 
   window.toggleGallery = () => {
     const g = document.getElementById("gallery");
-    const isHidden = (getComputedStyle(g).display === "none" || getComputedStyle(g).display === "");
-    
-    if (isHidden) {
+    if (getComputedStyle(g).display === "none") {
         g.style.display = "flex";
         loadGlobalGallery(); 
     } else {
@@ -311,7 +376,7 @@ canvas {
   window.setMode = (newMode, btn) => {
       window.mode = newMode;
       toolButtons.forEach(button => button.classList.remove('active'));
-      btn.classList.add('active');
+      if(btn) btn.classList.add('active');
   }
 
   window.updateColorPreview = () => {
@@ -328,137 +393,177 @@ canvas {
     return `rgb(${rEl.value},${gEl.value},${bEl.value})`;
   }
 
-  // --- 2. УПРАВЛЕНИЕ ХОЛСТОМ И ФИКСЫ СКРОЛЛА ---
-
-  // ФИКС ПОЛЗУНКОВ: Изоляция от основного скролла и предотвращение стандартных действий
+  // --- ФИКС ПОЛЗУНКОВ ---
+  // Мы используем stopPropagation, чтобы события не доходили до вьюпорта и не вызывали рисование
   document.querySelectorAll('input[type="range"]').forEach(slider => {
-      slider.addEventListener('touchstart', (e) => {
-          e.stopPropagation(); // Не даем событию дойти до body
-      }, { passive: false }); // Важно: passive=false
-      slider.addEventListener('touchmove', (e) => {
-          e.stopPropagation();
-      }, { passive: false });
+      slider.addEventListener('touchstart', (e) => e.stopPropagation(), {passive: false});
+      slider.addEventListener('touchmove', (e) => e.stopPropagation(), {passive: false});
   });
-
 
   window.resizeCanvas = () => {
       const w = parseInt(document.getElementById('canvasW').value) || 360;
       const h = parseInt(document.getElementById('canvasH').value) || 500;
       
-      if(w > 2000 || h > 2000 || w < 100 || h < 100) {
-          alert("Размер должен быть от 100x100 до 2000x2000.");
-          return;
-      }
-
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = canvas.width;
       tempCanvas.height = canvas.height;
-      
-      // Заливаем временный холст белым перед копированием (для сохранения прозрачности/фона)
-      tempCanvas.getContext('2d').fillStyle = "#fff";
-      tempCanvas.getContext('2d').fillRect(0, 0, tempCanvas.width, tempCanvas.height);
       tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
 
       canvas.width = w;
       canvas.height = h;
       
-      // Заливаем новый холст белым
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0,0,canvas.width,canvas.height);
-      // Копируем содержимое (может быть сжато/растянуто)
-      ctx.drawImage(tempCanvas, 0, 0, w, h);
+      ctx.drawImage(tempCanvas, 0, 0);
+      centerCanvas(); // Центрируем после ресайза
   }
 
   window.downloadCanvas = () => {
     const link = document.createElement('a');
-    link.download = 'suno_canvas_' + Date.now() + '.png';
+    link.download = 'suno_art.png';
     link.href = canvas.toDataURL("image/png");
     link.click();
   }
 
-  // --- 3. ЛОГИКА РИСОВАНИЯ С ИДЕАЛЬНЫМ ДЕТЕКТОРОМ ДВУХ ПАЛЬЦЕВ (Ibis Paint X) ---
+  // --- ЛОГИКА ЖЕСТОВ И РИСОВАНИЯ ---
 
-  function pos(e) {
-    const rct = canvas.getBoundingClientRect();
-    const cx = e.touches ? e.touches[0].clientX : e.clientX;
-    const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    return { x: cx - rct.left, y: cy - rct.top };
+  function updateTransform() {
+      // Применяем CSS трансформацию к холсту
+      canvas.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
   }
 
-  canvas.onmousedown = canvas.ontouchstart = e => {
-    
-    window.lastTouchCount = e.touches ? e.touches.length : 1;
+  // Получить координаты рисования на холсте с учетом зума и сдвига
+  function getPaintPosition(e) {
+      // Координаты клика относительно Viewport (контейнера)
+      const rect = viewport.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      
+      const viewX = clientX - rect.left;
+      const viewY = clientY - rect.top;
 
-    if (window.lastTouchCount > 1) {
-        // 2 и более пальцев: Начинаем жест перемещения/масштабирования
-        window.isOneFingerDraw = false;
-        window.drawing = false;
-        // НЕ вызываем preventDefault(), чтобы браузер мог выполнить зум и скролл
-        return; 
-    }
-    
-    // 1 палец: Начинаем рисовать
-    window.isOneFingerDraw = true;
-    window.drawing = true;
-    
-    const p = pos(e);
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
+      // Математика обратной трансформации:
+      // (КоординатаВьюпорта - Сдвиг) / Масштаб = КоординатаХолста
+      return {
+          x: (viewX - pointX) / scale,
+          y: (viewY - pointY) / scale
+      };
+  }
+  
+  function getDistance(touches) {
+      return Math.hypot(
+          touches[0].clientX - touches[1].clientX,
+          touches[0].clientY - touches[1].clientY
+      );
+  }
+  
+  function getMidpoint(touches) {
+      return {
+          x: (touches[0].clientX + touches[1].clientX) / 2,
+          y: (touches[0].clientY + touches[1].clientY) / 2
+      };
+  }
 
-    if(window.mode==="fill") {
-        ctx.fillStyle = getColor();
-        ctx.globalCompositeOperation = "source-over";
-        ctx.fillRect(0,0,canvas.width,canvas.height);
-        // После заливки отключаем рисование
-        window.drawing = false;
-        window.isOneFingerDraw = false;
-    }
-  };
+  // События вешаем на Viewport, так как он занимает весь экран
+  viewport.addEventListener('mousedown', onPointerDown);
+  viewport.addEventListener('touchstart', onPointerDown, {passive: false});
+  
+  viewport.addEventListener('mousemove', onPointerMove);
+  viewport.addEventListener('touchmove', onPointerMove, {passive: false});
+  
+  viewport.addEventListener('mouseup', onPointerUp);
+  viewport.addEventListener('touchend', onPointerUp);
+  viewport.addEventListener('mouseleave', onPointerUp);
 
-  canvas.onmouseup = canvas.ontouchend = e => {
-    // Если количество пальцев упало до 0 или мышь отпущена, сбросить флаги
-    if (e.touches && e.touches.length === 0 || !e.touches) {
-        window.drawing = false;
-        window.isOneFingerDraw = false;
-        window.lastTouchCount = 0;
-        ctx.beginPath();
-    }
-    // Если был сброс с 2 до 1 пальца (маловероятно), рисование останется выключенным
-  };
+  function onPointerDown(e) {
+      // Если 2 пальца - начало жеста
+      if (e.touches && e.touches.length === 2) {
+          isGesture = true;
+          startDist = getDistance(e.touches);
+          startScale = scale;
+          
+          const mid = getMidpoint(e.touches);
+          startX = mid.x - pointX; // Запоминаем смещение относительно текущей позиции
+          startY = mid.y - pointY;
+          return;
+      }
 
-  canvas.onmousemove = canvas.ontouchmove = e => {
-    
-    const currentTouchCount = e.touches ? e.touches.length : 1;
-    
-    // Если мы переключились на 2 пальца ИЛИ мы уже не в режиме рисования одним пальцем, выходим
-    if (currentTouchCount > 1 || !window.isOneFingerDraw) {
-        window.drawing = false;
-        return;
-    }
-    
-    // Мы уверены, что это рисование (1 палец): запрещаем скролл
-    e.preventDefault(); 
+      // Если 1 палец/мышь - Рисование
+      if ((!e.touches || e.touches.length === 1) && !isGesture) {
+          if (window.mode === 'fill') {
+               ctx.fillStyle = getColor();
+               ctx.fillRect(0,0,canvas.width,canvas.height);
+               return;
+          }
+          
+          window.drawing = true;
+          const p = getPaintPosition(e);
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          lastX = p.x;
+          lastY = p.y;
+      }
+  }
 
-    const p = pos(e);
-    const lineWidth = sizeEl.value;
-    
-    if (window.mode === "draw") {
-      ctx.globalCompositeOperation = "source-over";
-      ctx.strokeStyle = getColor();
-      ctx.lineWidth = lineWidth;
-    }
-    if (window.mode === "erase") {
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.lineWidth = lineWidth;
-    }
-    
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.lineTo(p.x, p.y);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
-  };
+  function onPointerMove(e) {
+      e.preventDefault(); // Блокируем скролл страницы
+
+      // Логика 2 пальцев (Зум и Пан)
+      if (e.touches && e.touches.length === 2) {
+          isGesture = true;
+          window.drawing = false; // Прекращаем рисовать
+
+          // 1. Zoom
+          const newDist = getDistance(e.touches);
+          const scaleMultiplier = newDist / startDist;
+          let newScale = startScale * scaleMultiplier;
+          
+          // Ограничители зума
+          if (newScale < 0.5) newScale = 0.5;
+          if (newScale > 5.0) newScale = 5.0;
+          scale = newScale;
+
+          // 2. Pan (Перемещение)
+          const mid = getMidpoint(e.touches);
+          pointX = mid.x - startX; 
+          pointY = mid.y - startY;
+
+          updateTransform();
+          return;
+      }
+
+      // Логика Рисования (если не жест)
+      if (window.drawing && !isGesture) {
+          const p = getPaintPosition(e);
+          
+          const lineWidth = sizeEl.value;
+          
+          if (window.mode === "draw") {
+              ctx.globalCompositeOperation = "source-over";
+              ctx.strokeStyle = getColor();
+              ctx.lineWidth = lineWidth;
+          } else if (window.mode === "erase") {
+              ctx.globalCompositeOperation = "destination-out";
+              ctx.lineWidth = lineWidth;
+          }
+          
+          // Интерполяция для плавности (особенно при зуме)
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.beginPath();
+          ctx.moveTo(lastX, lastY);
+          ctx.lineTo(p.x, p.y);
+          ctx.stroke();
+          
+          lastX = p.x;
+          lastY = p.y;
+      }
+  }
+
+  function onPointerUp(e) {
+      window.drawing = false;
+      if (e.touches && e.touches.length < 2) {
+          isGesture = false;
+      }
+  }
 
   window.clearCanvas = () => {
     ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -467,147 +572,82 @@ canvas {
     ctx.fillRect(0,0,canvas.width,canvas.height);
   }
   
-  // Инициализация
-  window.clearCanvas();
-
-
-  // --- 4. FIREBASE ЛОГИКА (Остается без изменений, кроме использования новой логики) ---
-
+  // --- FIREBASE (Без изменений логики) ---
   window.saveToFirebase = async () => {
-    if(!confirm("Опубликовать рисунок?")) return;
-    
+    if(!confirm("Опубликовать?")) return;
     loader.style.display = "inline"; 
-    
     try {
         const imgData = canvas.toDataURL("image/png");
-        
         await addDoc(galleryRef, {
             image: imgData,
             date: Date.now(),
             deleteVotes: 0,       
             voters: []            
         });
-        
-        alert("Ура! Рисунок теперь в глобальной галерее.");
+        alert("Опубликовано!");
         window.toggleGallery(); 
     } catch (e) {
-        console.error("Ошибка Firebase:", e);
-        if(e.code === 'permission-denied') {
-            alert("Ошибка доступа! Проверьте правила (Rules) Firebase.");
-        } else {
-            alert("Ошибка: " + e.message);
-        }
+        console.error(e);
+        alert("Ошибка: " + e.message);
     } finally {
         loader.style.display = "none";
     }
   };
 
   window.voteToDelete = async (docId, currentVotes, currentVoters) => {
-      if (!confirm("Вы уверены, что хотите проголосовать за удаление этого контента (18+/шок)? Ваш голос будет засчитан.")) return;
-
-      if (currentVoters.includes(USER_ID)) {
-          alert("Вы уже голосовали за удаление этого рисунка!");
-          return;
-      }
+      if (!confirm("Пожаловаться (18+)?")) return;
+      if (currentVoters.includes(USER_ID)) { alert("Вы уже голосовали."); return; }
       
       const docRef = doc(db, "drawings", docId);
-
       try {
           const newVotes = currentVotes + 1;
-          
           if (newVotes >= 10) {
               await deleteDoc(docRef);
-              alert("Рисунок набрал 10 голосов и был удален из галереи.");
+              alert("Удалено.");
               loadGlobalGallery();
           } else {
-              await updateDoc(docRef, {
-                  deleteVotes: increment(1), 
-                  voters: arrayUnion(USER_ID) 
-              });
-              alert(`Ваш голос засчитан. Голосов за удаление: ${newVotes}/10`);
-              
-              const voteCounterElement = document.getElementById(`votes-${docId}`);
-              const voteButtonElement = document.getElementById(`button-${docId}`);
-              if (voteCounterElement) {
-                  voteCounterElement.textContent = `🚨 ${newVotes}/10`;
-              }
-              if (voteButtonElement) {
-                  voteButtonElement.disabled = true;
-                  voteButtonElement.textContent = "Уже проголосовано";
-              }
+              await updateDoc(docRef, { deleteVotes: increment(1), voters: arrayUnion(USER_ID) });
+              alert(`Голос принят. ${newVotes}/10`);
+              document.getElementById(`votes-${docId}`).textContent = `🚨 ${newVotes}/10`;
           }
-      } catch (e) {
-          console.error("Ошибка при голосовании:", e);
-          alert("Не удалось проголосовать. Проверьте правила Firebase!");
-      }
+      } catch (e) { console.error(e); }
   };
-
 
   async function loadGlobalGallery() {
     const content = document.getElementById("galleryContent");
-    content.innerHTML = "<p style='color:#0f0'>Подключение к базе...</p>";
-    
+    content.innerHTML = "<p style='color:#0f0'>Загрузка...</p>";
     try {
         const q = query(galleryRef, orderBy("date", "desc"), limit(20));
         const querySnapshot = await getDocs(q);
-        
         content.innerHTML = ""; 
-        
-        if(querySnapshot.empty) {
-            content.innerHTML = "<p>Галерея пуста. Нарисуй что-нибудь первым!</p>";
-            return;
-        }
+        if(querySnapshot.empty) { content.innerHTML = "<p>Пусто.</p>"; return; }
 
         querySnapshot.forEach((docSnap) => {
             const data = docSnap.data();
-            const docId = docSnap.id; 
-
             const div = document.createElement("div");
             div.className = "gallery-item";
             
             const img = new Image();
             img.src = data.image;
             img.onclick = () => {
-                if(confirm("Загрузить этот рисунок на холст?")) {
+                if(confirm("Редактировать этот рисунок?")) {
                     const pic = new Image();
                     pic.src = data.image;
                     pic.onload = () => {
                         window.clearCanvas(); 
-                        ctx.globalCompositeOperation = "source-over";
-                        canvas.width = pic.width;
-                        canvas.height = pic.height;
-                        document.getElementById('canvasW').value = pic.width;
-                        document.getElementById('canvasH').value = pic.height;
                         ctx.drawImage(pic, 0,0);
+                        centerCanvas();
                     }
                     window.toggleGallery();
                 }
             };
             
-            const currentVotes = data.deleteVotes || 0;
-            const votersArray = data.voters || [];
-
-            const voteButton = document.createElement("button");
-            voteButton.id = `button-${docId}`; 
-            voteButton.style.marginTop = "5px";
-            voteButton.style.padding = "5px 10px";
-            voteButton.classList.add('danger-btn');
-            voteButton.textContent = `Удалить`; 
-            voteButton.onclick = () => window.voteToDelete(docId, currentVotes, votersArray);
+            const btn = document.createElement("button");
+            btn.classList.add('danger-btn');
+            btn.textContent = "Report";
+            btn.style.fontSize = "10px";
+            btn.style.marginTop = "5px";
+            btn.onclick = () => window.voteToDelete(docSnap.id, data.deleteVotes || 0, data.voters || []);
             
-            const voteCounter = document.createElement("p");
-            voteCounter.id = `votes-${docId}`;
-            voteCounter.style.fontSize = "12px";
-            voteCounter.style.margin = "0";
-            voteCounter.style.color = "#f00";
-            voteCounter.textContent = `🚨 ${currentVotes}/10`;
-            
-            if (votersArray.includes(USER_ID)) {
-                 voteButton.disabled = true;
-                 voteButton.textContent = "Уже проголосовано";
-            }
-
-            div.appendChild(img);
-            div.appendChild(voteCounter);
-            div.appendChild(voteButton);
-            co
+            const info = document.createElement("div");
+            info.innerHTML = `<span id="votes-${docSnap.id}" style="col
