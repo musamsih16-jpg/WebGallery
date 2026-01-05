@@ -18,13 +18,14 @@ body {
 }
 .size-inputs { display: flex; align-items: center; gap: 5px; }
 .size-inputs input { width: 45px; background: #000; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 5px; }
-button { background: var(--btn-bg); color: #fff; border: 1px solid #555; border-radius: 5px; padding: 8px 12px; font-size: 14px; }
+button { background: var(--btn-bg); color: #fff; border: 1px solid #555; border-radius: 5px; padding: 8px 12px; font-size: 14px; cursor: pointer; }
 button:disabled { opacity: 0.3; }
 #viewport { flex-grow: 1; position: relative; background: #181818; overflow: hidden; touch-action: none; }
 canvas { position: absolute; background: #fff; transform-origin: 0 0; }
 .floating-panel {
   position: fixed; top: 70px; background: rgba(30,30,30,0.95); border: 1px solid #666;
   border-radius: 8px; padding: 15px; display: none; flex-direction: column; gap: 12px; z-index: 10000;
+  max-height: 70vh; overflow-y: auto;
 }
 #color-preview { width: 100%; height: 40px; border: 2px solid #fff; border-radius: 4px; background: #000; }
 input[type=range] { width: 100%; height: 25px; }
@@ -45,18 +46,22 @@ input[type=range] { width: 100%; height: 25px; }
     <input type="number" id="inpH" value="500" onchange="resizeCanvas()">
   </div>
   <button onclick="toggle('colors-panel')">🎨</button>
-  <button onclick="toggleGallery()">🌍 Глобально</button>
-  <button onclick="saveToCloud()" style="color:var(--accent)">☁️ Запустить</button>
+  <button onclick="toggle('lang-panel')">🌐</button>
+  <button onclick="toggleGallery()" id="btn-global">🌍 Глобально</button>
+  <button onclick="saveToCloud()" style="color:var(--accent)" id="btn-save">☁️ Запустить</button>
   <button onclick="downloadImg()">💾</button>
   <button onclick="resetView()">🎯</button>
   <button onclick="clearCanvas()" style="color:red">🗑</button>
 </div>
 
+<div id="lang-panel" class="floating-panel" style="left:50%; transform: translateX(-50%);">
+  </div>
+
 <div id="tools-panel" class="floating-panel" style="left:10px">
-  <button onclick="setMode('draw')">✏️ Кисть</button>
-  <button onclick="setMode('erase')">🧽 Ластик</button>
-  <button onclick="setMode('fill')">⬛ Заливка</button>
-  <button onclick="document.getElementById('fileIn').click()">📁 Фото</button>
+  <button onclick="setMode('draw')" id="m-brush">✏️ Кисть</button>
+  <button onclick="setMode('erase')" id="m-erase">🧽 Ластик</button>
+  <button onclick="setMode('fill')" id="m-fill">⬛ Заливка</button>
+  <button onclick="document.getElementById('fileIn').click()" id="m-photo">📁 Фото</button>
   <input type="file" id="fileIn" hidden accept="image/*" onchange="handleImage(event)">
 </div>
 
@@ -73,7 +78,7 @@ input[type=range] { width: 100%; height: 25px; }
 </div>
 
 <div id="gallery-overlay">
-  <button onclick="toggleGallery()">❌ Закрыть</button>
+  <button onclick="toggleGallery()" id="btn-close-gallery">❌ Закрыть</button>
   <div id="gallery-content"></div>
 </div>
 
@@ -94,19 +99,19 @@ const galleryRef = collection(db, "drawings");
 let USER_ID = localStorage.getItem("u_id") || ('u'+Math.random());
 localStorage.setItem("u_id", USER_ID);
 
-let localReported = new Set(); // Баг-фикс: локальный список жалоб
+let localReported = new Set(); 
 
 window.saveToCloud = async () => {
-    if(!confirm("Опубликовать?")) return;
+    if(!confirm(window.t('confirm'))) return;
     try {
         await addDoc(galleryRef, { image: canvas.toDataURL('image/jpeg', 0.6), date: Date.now(), reports: 0, reporters: [] });
-        alert("Опубликовано!");
-    } catch(e) { alert("Ошибка"); }
+        alert(window.t('success'));
+    } catch(e) { alert("Error"); }
 };
 
 window.loadGlobalGallery = async () => {
     const box = document.getElementById("gallery-content");
-    box.innerHTML = "Загрузка...";
+    box.innerHTML = window.t('loading');
     const snap = await getDocs(query(galleryRef, orderBy("date", "desc"), limit(20)));
     box.innerHTML = "";
     snap.forEach(d => {
@@ -114,13 +119,13 @@ window.loadGlobalGallery = async () => {
         const isReported = localReported.has(d.id) || (data.reporters && data.reporters.includes(USER_ID));
         const div = document.createElement("div");
         div.className = "art-card";
-        div.innerHTML = `<img src="${data.image}"><button ${isReported?'disabled':''} class="report-btn">${isReported?'Уже жаловались':'Жалоба'} (${data.reports||0})</button>`;
+        div.innerHTML = `<img src="${data.image}"><button ${isReported?'disabled':''} class="report-btn">${isReported ? window.t('reported') : window.t('report')} (${data.reports||0})</button>`;
         div.querySelector("button").onclick = async (e) => {
-            if(!confirm("Пожаловаться?")) return;
+            if(!confirm(window.t('confirm_report'))) return;
             await updateDoc(doc(db, "drawings", d.id), { reports: increment(1), reporters: arrayUnion(USER_ID) });
             localReported.add(d.id);
             e.target.disabled = true;
-            e.target.innerText = "Отправлено";
+            e.target.innerText = window.t('reported');
         };
         box.appendChild(div);
     });
@@ -128,14 +133,59 @@ window.loadGlobalGallery = async () => {
 </script>
 
 <script>
+// --- ПЕРЕВОДЫ ---
+const translations = {
+    "az": { name: "Azərbaycan", global: "🌍 Qlobal", save: "☁️ Yayımla", brush: "✏️ Fırça", erase: "🧽 Pozan", fill: "⬛ Doldurma", photo: "📁 Şəkil", close: "❌ Bağla", confirm: "Dərc edilsin?", success: "Dərc edildi!", loading: "Yüklənir...", report: "Şikayət", reported: "Şikayət edildi", confirm_report: "Şikayət edilsin?" },
+    "en": { name: "English", global: "🌍 Global", save: "☁️ Launch", brush: "✏️ Brush", erase: "🧽 Eraser", fill: "⬛ Fill", photo: "📁 Photo", close: "❌ Close", confirm: "Publish?", success: "Published!", loading: "Loading...", report: "Report", reported: "Reported", confirm_report: "Confirm report?" },
+    "fr": { name: "Français", global: "🌍 Global", save: "☁️ Publier", brush: "✏️ Pinceau", erase: "🧽 Gomme", fill: "⬛ Remplir", photo: "📁 Photo", close: "❌ Fermer", confirm: "Publier?", success: "Publié!", loading: "Chargement...", report: "Signaler", reported: "Signalé", confirm_report: "Confirmer le signalement?" },
+    "de": { name: "Deutsch", global: "🌍 Global", save: "☁️ Starten", brush: "✏️ Pinsel", erase: "🧽 Radierer", fill: "⬛ Füllen", photo: "📁 Foto", close: "❌ Schließen", confirm: "Veröffentlichen?", success: "Veröffentlicht!", loading: "Laden...", report: "Melden", reported: "Gemeldet", confirm_report: "Meldung bestätigen?" },
+    "it": { name: "Italiano", global: "🌍 Globale", save: "☁️ Avvia", brush: "✏️ Pennello", erase: "🧽 Gomma", fill: "⬛ Riempi", photo: "📁 Foto", close: "❌ Chiudi", confirm: "Pubblicare?", success: "Pubblicato!", loading: "Caricamento...", report: "Segnala", reported: "Segnalato", confirm_report: "Confermi la segnalazione?" },
+    "jp": { name: "日本語", global: "🌍 グローバル", save: "☁️ 公開する", brush: "✏️ ブラシ", erase: "🧽 消しゴム", fill: "⬛ 塗りつぶし", photo: "📁 写真", close: "❌ 閉じる", confirm: "公開しますか？", success: "公開されました！", loading: "読み込み中...", report: "通報", reported: "通報済み", confirm_report: "通報しますか？" },
+    "ko": { name: "한국어", global: "🌍 글로벌", save: "☁️ 게시하기", brush: "✏️ 브러시", erase: "🧽 지우개", fill: "⬛ 채우기", photo: "📁 사진", close: "❌ 닫기", confirm: "게시하시겠습니까?", success: "게시되었습니다!", loading: "로딩 중...", report: "신고", reported: "신고됨", confirm_report: "신고하시겠습니까?" },
+    "pt": { name: "Português", global: "🌍 Global", save: "☁️ Iniciar", brush: "✏️ Pincel", erase: "🧽 Borracha", fill: "⬛ Preencher", photo: "📁 Foto", close: "❌ Fechar", confirm: "Publicar?", success: "Publicado!", loading: "Carregando...", report: "Denunciar", reported: "Denunciado", confirm_report: "Confirmar denúncia?" },
+    "ru": { name: "Русский", global: "🌍 Глобально", save: "☁️ Запустить", brush: "✏️ Кисть", erase: "🧽 Ластик", fill: "⬛ Заливка", photo: "📁 Фото", close: "❌ Закрыть", confirm: "Опубликовать?", success: "Опубликовано!", loading: "Загрузка...", report: "Жалоба", reported: "Отправлено", confirm_report: "Пожаловаться?" },
+    "es": { name: "Español", global: "🌍 Global", save: "☁️ Lanzar", brush: "✏️ Pincel", erase: "🧽 Borrador", fill: "⬛ Rellenar", photo: "📁 Foto", close: "❌ Cerrar", confirm: "¿Publicar?", success: "¡Publicado!", loading: "Cargando...", report: "Reportar", reported: "Reportado", confirm_report: "¿Confirmar reporte?" },
+    "tr": { name: "Türkçe", global: "🌍 Küresel", save: "☁️ Başlat", brush: "✏️ Fırça", erase: "🧽 Silgi", fill: "⬛ Doldur", photo: "📁 Fotoğraf", close: "❌ Kapat", confirm: "Yayınlansın mı?", success: "Yayınlandı!", loading: "Yükleniyor...", report: "Bildir", reported: "Bildirildi", confirm_report: "Bildirmeyi onayla?" },
+    "zh": { name: "中文", global: "🌍 全球", save: "☁️ 发布", brush: "✏️ 画笔", erase: "🧽 橡皮擦", fill: "⬛ 填充", photo: "📁 照片", close: "❌ 关闭", confirm: "确定发布吗？", success: "已发布！", loading: "加载中...", report: "举报", reported: "已举报", confirm_report: "确定举报吗？" }
+};
+
+let currentLang = localStorage.getItem('lang') || 'ru';
+
+window.t = (key) => translations[currentLang][key] || key;
+
+function applyLang() {
+    document.getElementById('btn-global').innerText = window.t('global');
+    document.getElementById('btn-save').innerText = window.t('save');
+    document.getElementById('m-brush').innerText = window.t('brush');
+    document.getElementById('m-erase').innerText = window.t('erase');
+    document.getElementById('m-fill').innerText = window.t('fill');
+    document.getElementById('m-photo').innerText = window.t('photo');
+    document.getElementById('btn-close-gallery').innerText = window.t('close');
+}
+
+function initLangMenu() {
+    const panel = document.getElementById('lang-panel');
+    const sortedKeys = Object.keys(translations).sort((a, b) => translations[a].name.localeCompare(translations[b].name));
+    sortedKeys.forEach(lang => {
+        const btn = document.createElement('button');
+        btn.innerText = translations[lang].name;
+        btn.onclick = () => {
+            currentLang = lang;
+            localStorage.setItem('lang', lang);
+            applyLang();
+            toggle('lang-panel');
+        };
+        panel.appendChild(btn);
+    });
+}
+
+// --- ОСНОВНОЙ КОД ХОЛСТА ---
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const viewport = document.getElementById("viewport");
 const preview = document.getElementById("color-preview");
 
 let scale = 1, pX = 0, pY = 0, mode = "draw", isDrawing = false, lastX = 0, lastY = 0;
-
-// Undo/Redo система
 let history = [];
 let historyStep = -1;
 
@@ -170,17 +220,25 @@ function updColor() {
 
 function toggle(id) {
     const el = document.getElementById(id);
-    el.style.display = (el.style.display === 'flex') ? 'none' : 'flex';
+    const isVisible = el.style.display === 'flex';
+    document.querySelectorAll('.floating-panel').forEach(p => p.style.display = 'none');
+    el.style.display = isVisible ? 'none' : 'flex';
 }
 
 function toggleGallery() {
-    toggle("gallery-overlay");
-    if(document.getElementById("gallery-overlay").style.display === 'flex') window.loadGlobalGallery();
+    const gal = document.getElementById("gallery-overlay");
+    if(gal.style.display === 'flex') {
+        gal.style.display = 'none';
+    } else {
+        gal.style.display = 'flex';
+        window.loadGlobalGallery();
+    }
 }
 
 function setMode(m) { mode = m; toggle('tools-panel'); }
 
 function clearCanvas() { 
+    if(!confirm("Clear?")) return;
     ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,canvas.width,canvas.height); 
     saveHistory();
 }
@@ -255,7 +313,16 @@ window.addEventListener('touchend', () => { if(isDrawing) saveHistory(); isDrawi
 ctx.fillStyle = "#fff"; ctx.fillRect(0,0,360,500);
 saveHistory();
 updColor();
+initLangMenu();
+applyLang();
 setTimeout(resetView, 200);
+
+window.downloadImg = () => {
+    const link = document.createElement('a');
+    link.download = 'canvas.jpg';
+    link.href = canvas.toDataURL('image/jpeg');
+    link.click();
+};
 </script>
 </body>
 </html>
