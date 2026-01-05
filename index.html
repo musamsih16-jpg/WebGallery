@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"> 
-<title>Suno Global Canvas (Mobile Pro 2.0)</title>
+<title>Suno Global Canvas (Mobile Pro 2.1)</title>
 <style>
 /* --- 1. СТИЛЬ IbisPaint X (ОПТИМИЗИРОВАННЫЙ) --- */
 :root {
@@ -22,7 +22,6 @@ body {
   color: var(--text-color);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   overflow-y: auto; 
-  /* УЛЬТРА-ОПТИМИЗАЦИЯ: Отключение теней/анимаций, которые могут замедлять работу */
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
 }
@@ -49,7 +48,7 @@ button, input:not([type=range]) {
   color: var(--text-color);
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  padding: 10px 12px; /* Немного уменьшен для компактности */
+  padding: 10px 12px;
   font-size: 14px;
   cursor: pointer;
   transition: 0.2s;
@@ -64,7 +63,6 @@ input[type=range] {
   background: var(--border-color);
   height: 8px;
   border-radius: 4px;
-  /* touch-action: none; - Убрано, чтобы довериться JS-фиксам */
 }
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -92,7 +90,7 @@ input[type=range]::-webkit-slider-thumb {
     padding: 20px;
     min-height: calc(100vh - 70px);
     box-sizing: border-box;
-    overflow: hidden; /* Должен быть, чтобы не было двух полос прокрутки */
+    overflow: hidden; 
 }
 
 canvas {
@@ -101,8 +99,6 @@ canvas {
   border-radius: 8px;
   box-shadow: 0 0 20px rgba(0, 140, 255, 0.2);
   background: #fff;
-  /* КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: Отключаем выделение текста,
-     чтобы не мешало жестам */
   user-select: none;
   -webkit-user-select: none; 
 }
@@ -111,14 +107,17 @@ canvas {
 /* --- 3. ИНСТРУМЕНТЫ И ЦВЕТА --- */
 #tools {
   position: fixed; left: 0; top: 60px; width: 55px; background: var(--control-bg); padding: 10px 0;
-  border-right: 1px solid var(--border-color); display: none; flex-direction: column; gap: 20px;
+  border-right: 1px solid var(--border-color); 
+  display: flex; /* КРИТИЧЕСКИЙ ФИКС: Показываем панель инструментов по умолчанию */
+  flex-direction: column; gap: 20px;
   align-items: center; z-index: 50; height: calc(100vh - 60px);
 }
 .tool-button { padding: 10px; font-size: 28px; }
 .tool-button.active { color: var(--accent-color); text-shadow: 0 0 5px var(--accent-color); }
 
 #color-panel {
-    display: none; position: fixed; right: 0; top: 60px; width: 220px; background: var(--control-bg);
+    display: none; /* КРИТИЧЕСКИЙ ФИКС: Скрываем по умолчанию */
+    position: fixed; right: 0; top: 60px; width: 220px; background: var(--control-bg);
     padding: 15px; border-left: 1px solid var(--border-color); flex-direction: column; gap: 12px;
     z-index: 50; height: calc(100vh - 60px); overflow-y: auto;
 }
@@ -128,7 +127,7 @@ canvas {
 .rgb-slider-group label { font-size: 14px; display: flex; justify-content: space-between; }
 
 
-/* --- 4. МОДАЛЬНОЕ ОКНО ЯЗЫКА И ГАЛЕРЕЯ (ОПТИМИЗАЦИЯ) --- */
+/* --- 4. МОДАЛЬНОЕ ОКНО ЯЗЫКА И ГАЛЕРЕЯ --- */
 #language-modal, #gallery {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.95);
@@ -136,7 +135,7 @@ canvas {
     justify-content: center;
     align-items: center;
     z-index: 3000;
-    transition: opacity 0.3s; /* Добавлено для плавности, но без лишней нагрузки */
+    transition: opacity 0.3s;
 }
 #language-content {
     background: var(--control-bg);
@@ -276,11 +275,10 @@ canvas {
 
   window.drawing = false;
   window.mode = "draw";
-  window.isOneFingerDrawing = false; // НОВЫЙ ФЛАГ для точного контроля жестов
+  window.isOneFingerDrawing = false; 
 
-  // --- I18N: СЛОВАРЬ ПЕРЕВОДОВ (Обновлен) ---
+  // --- I18N: СЛОВАРЬ ПЕРЕВОДОВ ---
   const translations = {
-      // Ключ: { ru: 'Русский', en: 'English', az: 'Azərbaycan dili', ... }
       'btn_tools': {'ru': '⚙️ Инструменты', 'en': '⚙️ Tools', 'az': '⚙️ Alətlər', 'tr': '⚙️ Araçlar', 'zh': '⚙️ 工具', 'es': '⚙️ Herramientas', 'fr': '⚙️ Outils'},
       'btn_color': {'ru': '🌈 Цвет/Размер', 'en': '🌈 Color/Size', 'az': '🌈 Rəng/Ölçü', 'tr': '🌈 Renk/Boyut', 'zh': '🌈 颜色/尺寸', 'es': '🌈 Color/Tamaño', 'fr': '🌈 Couleur/Taille'},
       'btn_gallery': {'ru': '🌍 Глобальная Галерея', 'en': '🌍 Global Gallery', 'az': '🌍 Qlobal Qalereya', 'tr': '🌍 Küresel Galeri', 'zh': '🌍 全球画廊', 'es': '🌍 Galería Global', 'fr': '🌍 Galerie Globale'},
@@ -290,18 +288,14 @@ canvas {
       'btn_clear': {'ru': '🗑 Стереть', 'en': '🗑 Clear', 'az': '🗑 Təmizlə', 'tr': '🗑 Sil', 'zh': '🗑 清除', 'es': '🗑 Borrar', 'fr': '🗑 Effacer'},
       'lbl_width': {'ru': 'Ширина:', 'en': 'Width:', 'az': 'Eni:', 'tr': 'Genişlik:', 'zh': '宽度:', 'es': 'Ancho:', 'fr': 'Largeur:'},
       'lbl_height': {'ru': 'Высота:', 'en': 'Height:', 'az': 'Hündürlüyü:', 'tr': 'Yükseklik:', 'zh': '高度:', 'es': 'Alto:', 'fr': 'Hauteur:'},
-      
       'h3_color_panel': {'ru': 'Панель цвета и размера', 'en': 'Color and Size Panel', 'az': 'Rəng və Ölçü Paneli', 'tr': 'Renk ve Boyut Paneli', 'zh': '颜色和尺寸', 'es': 'Panel de Color y Tamaño', 'fr': 'Panneau Couleur/Taille'},
       'lbl_red': {'ru': 'Красный (R):', 'en': 'Red (R):', 'az': 'Qırmızı (R):', 'tr': 'Kırmızı (R):', 'zh': '红色 (R):', 'es': 'Rojo (R):', 'fr': 'Rouge (R):'},
       'lbl_green': {'ru': 'Зеленый (G):', 'en': 'Green (G):', 'az': 'Yaşıl (G):', 'tr': 'Yeşil (G):', 'zh': '绿色 (G):', 'es': 'Verde (G):', 'fr': 'Vert (G):'},
       'lbl_blue': {'ru': 'Синий (B):', 'en': 'Blue (B):', 'az': 'Mavi (B):', 'tr': 'Mavi (B):', 'zh': '蓝色 (B):', 'es': 'Azul (B):', 'fr': 'Bleu (B):'},
-      'lbl_brush_size': {'ru': 'Размер кисти:', 'en': 'Brush Size:', 'az': 'Fırça Ölçüsü:', 'tr': 'Fırça Boyutu:', 'zh': '画笔大小:', 'es': 'Tamaño del Pincel:', 'fr': 'Taille du Pincel:'},
-      
+      'lbl_brush_size': {'ru': 'Размер кисти:', 'en': 'Brush Size:', 'az': 'Fırça Ölçüsü:', 'tr': 'Fırça Boyutu:', 'zh': '画笔大小:', 'es': 'Tamaño del Pincel:', 'fr': 'Taille du Pinceau:'},
       'h2_gallery_title': {'ru': '🌍 Рисунки игроков', 'en': '🌍 Player Drawings', 'az': '🌍 Oyunçu Rəsmləri', 'tr': '🌍 Oyuncu Çizimleri', 'zh': '🌍 玩家画作', 'es': '🌍 Dibujos de Jugadores', 'fr': '🌍 Dessins des Joueurs'},
       'btn_gallery_close': {'ru': '❌ Закрыть', 'en': '❌ Close', 'az': '❌ Bağla', 'tr': '❌ Kapat', 'zh': '❌ 关闭', 'es': '❌ Cerrar', 'fr': '❌ Fermer'},
       'h3_select_lang': {'ru': 'Выбрать язык', 'en': 'Select Language', 'az': 'Dil Seçin', 'tr': 'Dil Seçin', 'zh': '选择语言', 'es': 'Seleccionar Idioma', 'fr': 'Choisir la Langue'},
-
-      // Сообщения (упрощенные)
       'msg_size_error': {'ru': 'Размер должен быть от 100x100 до 2000x2000.', 'en': 'Size must be between 100x100 and 2000x2000.', 'az': 'Ölçü 100x100 ilə 2000x2000 arasında olmalıdır.', 'tr': 'Boyut 100x100 ve 2000x2000 arasında olmalıdır.', 'zh': '尺寸必须在100x100到2000x2000之间.', 'es': 'El tamaño debe estar entre 100x100 y 2000x2000.', 'fr': 'La taille doit être comprise entre 100x100 et 2000x2000.'},
       'msg_publish_confirm': {'ru': 'Опубликовать рисунок?', 'en': 'Publish drawing?', 'az': 'Rəsmi dərc edim?', 'tr': 'Çizimi yayınlamak ister misiniz?', 'zh': '发布画作?', 'es': '¿Publicar dibujo?', 'fr': 'Publier le dessin ?'},
       'msg_publish_success': {'ru': 'Ура! Рисунок теперь в глобальной галерее.', 'en': 'Hooray! Drawing is now in the global gallery.', 'az': 'Əla! Rəsm qlobal qalereyadadır.', 'tr': 'Harika! Çizim artık global galeride.', 'zh': '耶！画作已在画廊中。', 'es': '¡Hurra! El dibujo está en la galería global.', 'fr': 'Hourra! Le dessin est dans la galerie globale.'},
@@ -375,5 +369,15 @@ canvas {
   // --- 1. ФУНКЦИИ УПРАВЛЕНИЯ UI ---
 
   window.toggleToolsPanel = () => {
-      document.getElementById("tools").style.display = 
-        (getComputedSt
+      const tools = document.getElementById("tools");
+      tools.style.display = (getComputedStyle(tools).display === "flex") ? "none" : "flex";
+  }
+  
+  window.toggleColorPanel = () => {
+      const colorPanel = document.getElementById("color-panel");
+      colorPanel.style.display = (getComputedStyle(colorPanel).display === "flex") ? "none" : "flex";
+  }
+
+  window.toggleGallery = () => {
+    const g = document.getElementById("gallery");
+    const isHidden = (getComputedStyle(g).display === "none" || getComputedStyle(g).
