@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Suno Global Canvas (Pro Zoom)</title>
+<title>Suno Global Canvas (Stable Pro)</title>
 <style>
-/* --- 1. СТИЛЬ (ТЕМНЫЙ, СОВРЕМЕННЫЙ) --- */
+/* --- 1. СТИЛЬ --- */
 :root {
   --main-bg: #121212;
   --top-bar-bg: #222222;
@@ -20,9 +20,9 @@ body {
   margin: 0;
   background: var(--main-bg);
   color: var(--text-color);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  overflow: hidden; /* Важно: отключаем скролл всей страницы */
-  touch-action: none; /* Отключаем стандартные жесты браузера */
+  font-family: sans-serif;
+  overflow: hidden; /* Блокируем скролл страницы */
+  touch-action: pan-x pan-y; /* Разрешаем стандартные жесты вне холста */
 }
 
 /* Верхняя панель */
@@ -30,21 +30,17 @@ body {
   background: var(--top-bar-bg);
   padding: 8px;
   display: flex;
-  flex-wrap: nowrap; /* В одну строку с прокруткой */
   gap: 8px;
   align-items: center;
   border-bottom: 1px solid var(--border-color);
   overflow-x: auto;
-  position: absolute; /* Фиксируем сверху */
-  top: 0;
-  left: 0;
-  right: 0;
+  position: absolute;
+  top: 0; left: 0; right: 0;
   height: 60px;
   z-index: 100;
   box-sizing: border-box;
+  touch-action: manipulation; /* Кнопки должны нажиматься! */
 }
-
-/* Скрываем скроллбар меню, но оставляем прокрутку */
 #top::-webkit-scrollbar { display: none; }
 
 button, input:not([type=range]) {
@@ -55,9 +51,10 @@ button, input:not([type=range]) {
   padding: 8px 12px;
   font-size: 14px;
   cursor: pointer;
-  flex-shrink: 0; /* Чтобы кнопки не сжимались */
+  flex-shrink: 0;
 }
-button:hover { background: #4a4a4a; border-color: var(--accent-color); }
+button:active { transform: scale(0.95); } /* Анимация нажатия */
+button.active { border-color: var(--accent-color); color: var(--accent-color); }
 .danger-btn { border-color: var(--danger-color) !important; color: var(--danger-color) !important; }
 
 /* Ползунки */
@@ -67,121 +64,67 @@ input[type=range] {
   height: 6px;
   border-radius: 4px;
   width: 100%;
-  margin: 5px 0;
+  margin: 10px 0;
 }
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
+  width: 20px; height: 20px;
   border-radius: 50%;
   background: var(--accent-color);
-  cursor: pointer;
   border: 2px solid #fff;
 }
 
 .control-group {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-shrink: 0;
+  display: flex; align-items: center; gap: 5px; flex-shrink: 0;
 }
-.control-group input[type=number] { width: 50px; text-align: center; padding: 5px; }
+.control-group input[type=number] { width: 50px; text-align: center; }
 
-
-/* --- 2. ГЛАВНАЯ ОБЛАСТЬ (VIEWPORT) --- */
+/* --- 2. ОБЛАСТЬ РИСОВАНИЯ (VIEWPORT) --- */
 #viewport {
     position: absolute;
-    top: 60px; /* Высота хедера */
-    bottom: 0;
-    left: 0;
-    right: 0;
+    top: 60px; bottom: 0; left: 0; right: 0;
     background: #1a1a1a;
-    overflow: hidden; /* Скрываем вылезающий холст */
+    overflow: hidden;
+    touch-action: none; /* ВАЖНО: Тут свои жесты (зум/рис) */
     display: flex;
     justify-content: center;
     align-items: center;
-    touch-action: none;
 }
 
-/* Холст */
 canvas {
   display: block;
   background: #fff;
   box-shadow: 0 0 30px rgba(0,0,0,0.5);
-  /* Трансформация происходит через JS */
-  transform-origin: 0 0; 
+  transform-origin: 0 0; /* Зум от левого верхнего угла (логика JS) */
 }
 
-
-/* --- 3. ИНСТРУМЕНТЫ И ЦВЕТА --- */
+/* --- 3. ИНСТРУМЕНТЫ --- */
 #tools {
-  position: absolute;
-  left: 10px;
-  top: 70px;
-  width: 50px;
+  position: absolute; left: 10px; top: 70px;
   background: var(--control-bg);
-  padding: 10px 5px;
-  border: 1px solid var(--border-color);
+  padding: 10px;
   border-radius: 8px;
   display: none;
   flex-direction: column;
   gap: 15px;
-  align-items: center;
   z-index: 50;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  border: 1px solid #555;
 }
-
-.tool-button {
-  font-size: 24px;
-  background: transparent;
-  border: none;
-  padding: 5px;
-}
-.tool-button.active {
-    color: var(--accent-color);
-    text-shadow: 0 0 8px var(--accent-color);
-    transform: scale(1.1);
-}
+.tool-btn { font-size: 24px; background: transparent; border: none; padding: 5px; }
+.tool-btn.active { transform: scale(1.2); text-shadow: 0 0 10px var(--accent-color); }
 
 #color-panel {
     display: none;
-    position: absolute;
-    right: 10px;
-    top: 70px;
-    width: 240px;
+    position: absolute; right: 10px; top: 70px;
+    width: 250px;
     background: rgba(30, 30, 30, 0.95);
-    backdrop-filter: blur(10px);
     padding: 15px;
-    border: 1px solid var(--border-color);
     border-radius: 8px;
     flex-direction: column;
-    gap: 10px;
     z-index: 50;
-    max-height: calc(100vh - 100px);
-    overflow-y: auto;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    border: 1px solid #555;
 }
 
-.rgb-slider-group {
-    margin-bottom: 8px;
-}
-.rgb-slider-group label {
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-    color: #ccc;
-    margin-bottom: 2px;
-}
-
-#colorPreview {
-    height: 30px;
-    width: 100%;
-    border-radius: 4px;
-    border: 1px solid #fff;
-    margin-bottom: 10px;
-}
-
-/* --- 4. ГАЛЕРЕЯ --- */
 #gallery { 
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0,0,0,0.95); 
@@ -192,102 +135,276 @@ canvas {
   z-index: 2000;
 }
 .gallery-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 15px;
-    padding-bottom: 50px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;
 }
-.gallery-item {
-    background: #222;
-    padding: 10px;
-    border-radius: 8px;
-    text-align: center;
-}
-.gallery-item img { 
-    width: 100%;
-    height: 120px;
-    object-fit: contain;
-    background: #333;
-    border-radius: 4px;
-}
-
-#loader { color: #0f0; font-weight: bold; margin-left: 10px; display: none; font-size: 12px;}
+.gallery-item { background: #222; padding: 10px; border-radius: 8px; text-align: center; }
+.gallery-item img { width: 100%; height: 120px; object-fit: contain; background: #000; }
 </style>
 </head>
 <body>
 
 <div id="top">
-  <button onclick="window.toggleToolsPanel()">🛠 Инструменты</button>
-  <button onclick="window.toggleColorPanel()">🎨 Цвет/Размер</button>
-  <button onclick="window.toggleGallery()">🌍 Галерея</button>
-  <div style="width: 1px; height: 30px; background: #555; margin: 0 5px;"></div>
-  <button onclick="window.saveToFirebase()" style="color: var(--danger-color);">☁️ Публикация</button>
-  <button onclick="window.downloadCanvas()">💾 Сохранить</button>
-  <button onclick="window.clearCanvas()" class="danger-btn">🗑</button>
-  <span id="loader">Загрузка...</span>
-
-    <div class="control-group">
-        <label>W:</label>
-        <input type="number" id="canvasW" value="360" onchange="window.resizeCanvas()">
-    </div>
-    <div class="control-group">
-        <label>H:</label>
-        <input type="number" id="canvasH" value="500" onchange="window.resizeCanvas()">
-    </div>
+  <button onclick="toggleTools()">🛠 Инстр.</button>
+  <button onclick="toggleColors()">🎨 Цвет</button>
+  <button onclick="toggleGallery()">🌍 Галерея</button>
+  <div style="width:1px; height:20px; background:#555; margin:0 5px;"></div>
+  <button onclick="window.saveToCloud()" style="color:var(--danger-color)">☁️ Public</button>
+  <button onclick="downloadImg()">💾 Save</button>
+  <button onclick="clearCanvas()" class="danger-btn">🗑</button>
+  
+  <div class="control-group">
+     <label>W:</label><input type="number" id="canvasW" value="720" onchange="resizeC()">
+  </div>
+  <div class="control-group">
+     <label>H:</label><input type="number" id="canvasH" value="1080" onchange="resizeC()">
+  </div>
 </div>
 
 <div id="tools">
-    <button class="tool-button active" onclick="window.setMode('draw', this)">✏️</button>
-    <button class="tool-button" onclick="window.setMode('erase', this)">🧽</button>
-    <button class="tool-button" onclick="window.setMode('fill', this)">⬛</button>
-    <button class="tool-button" onclick="window.resetView()">🎯</button> </div>
+    <button class="tool-btn active" onclick="setMode('draw', this)">✏️</button>
+    <button class="tool-btn" onclick="setMode('erase', this)">🧽</button>
+    <button class="tool-btn" onclick="setMode('fill', this)">⬛</button>
+    <button class="tool-btn" onclick="resetView()">🎯</button>
+</div>
 
 <div id="color-panel">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="margin:0; font-size:16px;">Настройки</h3>
-        <button onclick="window.toggleColorPanel()" style="padding:2px 8px;">✕</button>
+    <div style="display:flex; justify-content:space-between;">
+        <h3>Настройки</h3><button onclick="toggleColors()">✕</button>
     </div>
-    <hr style="border-color:#444; margin:10px 0;">
-
-    <div id="colorPreview"></div>
+    <div id="preview" style="height:30px; background:#000; margin:10px 0; border:1px solid #fff;"></div>
     
-    <div class="rgb-slider-group">
-        <label>R: <span id="r_val">0</span></label>
-        <input type="range" id="r" min="0" max="255" value="0" oninput="window.updateColorPreview()">
-    </div>
-    <div class="rgb-slider-group">
-        <label>G: <span id="g_val">0</span></label>
-        <input type="range" id="g" min="0" max="255" value="0" oninput="window.updateColorPreview()">
-    </div>
-    <div class="rgb-slider-group">
-        <label>B: <span id="b_val">0</span></label>
-        <input type="range" id="b" min="0" max="255" value="0" oninput="window.updateColorPreview()">
-    </div>
-    
-    <hr style="border-color: #444; margin: 10px 0;">
-
-    <div class="rgb-slider-group">
-        <label>Размер кисти: <span id="size_val">5</span></label>
-        <input type="range" id="size" min="1" max="80" value="5" oninput="document.getElementById('size_val').textContent = this.value;">
-    </div>
+    <label>R</label><input type="range" id="r" max="255" value="0" oninput="updColor()">
+    <label>G</label><input type="range" id="g" max="255" value="0" oninput="updColor()">
+    <label>B</label><input type="range" id="b" max="255" value="0" oninput="updColor()">
+    <hr style="border-color:#444">
+    <label>Размер кисти: <span id="s_val">5</span></label>
+    <input type="range" id="size" min="1" max="100" value="5" oninput="document.getElementById('s_val').innerText=this.value">
 </div>
 
 <div id="viewport">
-    <canvas id="canvas" width="360" height="500"></canvas>
+    <canvas id="canvas" width="720" height="1080"></canvas>
 </div>
 
 <div id="gallery">
-    <div class="gallery-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h2 style="margin:0;">🌍 Глобальная Галерея</h2>
-        <button onclick="window.toggleGallery()">❌ Закрыть</button>
+    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+        <h2 style="margin:0">Галерея</h2><button onclick="toggleGallery()">Закрыть</button>
     </div>
-    <div id="galleryContent" class="gallery-grid"></div>
+    <div id="galleryContent" class="gallery-grid">Загрузка...</div>
 </div>
+
+<script>
+// Глобальные переменные
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const viewport = document.getElementById("viewport");
+const rEl = document.getElementById("r"); 
+const gEl = document.getElementById("g"); 
+const bEl = document.getElementById("b");
+const sizeEl = document.getElementById("size");
+const preview = document.getElementById("preview");
+
+let mode = "draw";
+let isDrawing = false;
+let startX = 0, startY = 0; // Для жестов
+let pointX = 0, pointY = 0; // Позиция холста
+let scale = 1; // Зум
+let startScale = 1;
+let startDist = 0;
+let lastX = 0, lastY = 0; // Для рисования
+
+// --- UI ФУНКЦИИ ---
+function toggleTools() { 
+    const t = document.getElementById("tools");
+    t.style.display = (t.style.display === "flex") ? "none" : "flex"; 
+}
+function toggleColors() { 
+    const c = document.getElementById("color-panel");
+    c.style.display = (c.style.display === "flex") ? "none" : "flex"; 
+}
+function toggleGallery() {
+    const g = document.getElementById("gallery");
+    const isHidden = (getComputedStyle(g).display === "none");
+    g.style.display = isHidden ? "flex" : "none";
+    if(isHidden && window.loadCloudGallery) window.loadCloudGallery();
+}
+function setMode(m, btn) {
+    mode = m;
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+    if(btn) btn.classList.add('active');
+}
+function updColor() {
+    preview.style.backgroundColor = `rgb(${rEl.value},${gEl.value},${bEl.value})`;
+}
+function getColor() { return `rgb(${rEl.value},${gEl.value},${bEl.value})`; }
+
+function resizeC() {
+    const w = document.getElementById('canvasW').value;
+    const h = document.getElementById('canvasH').value;
+    const temp = document.createElement('canvas');
+    temp.width = canvas.width; temp.height = canvas.height;
+    temp.getContext('2d').drawImage(canvas,0,0);
+    canvas.width = w; canvas.height = h;
+    ctx.drawImage(temp,0,0);
+    centerCanvas();
+}
+function downloadImg() {
+    const a = document.createElement('a');
+    a.download = 'art.png';
+    a.href = canvas.toDataURL();
+    a.click();
+}
+function clearCanvas() {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+}
+
+// --- СИСТЕМА ЖЕСТОВ (2 ПАЛЬЦА) ---
+function updateTransform() {
+    canvas.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+}
+function centerCanvas() {
+    // Центрируем холст в вьюпорте
+    const vw = viewport.clientWidth;
+    const vh = viewport.clientHeight;
+    // Начальная позиция: центр экрана минус половина холста
+    pointX = (vw - canvas.width * scale) / 2 + (canvas.width * scale - canvas.width)/2; // Сложная формула упрощается до транслейт
+    // Простой способ: CSS transform origin 0 0.
+    // Значит pointX должен быть таким, чтобы (0,0) холста сдвинулся
+    pointX = (vw - canvas.width)/2; 
+    pointY = (vh - canvas.height)/2;
+    scale = Math.min(vw/canvas.width, vh/canvas.height) * 0.9; // Автозум чтобы влезло
+    if(scale < 0.1) scale = 0.5;
+    updateTransform();
+}
+
+function getDist(touches) {
+    return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+}
+function getMid(touches) {
+    return { x: (touches[0].clientX + touches[1].clientX)/2, y: (touches[0].clientY + touches[1].clientY)/2 };
+}
+// Перевод координат экрана в координаты холста
+function getCanvasPos(e) {
+    const rect = viewport.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    // Формула обратной проекции
+    return {
+        x: (cx - rect.left - pointX) / scale,
+        y: (cy - rect.top - pointY) / scale
+    };
+}
+
+// Обработчики касаний
+viewport.addEventListener('touchstart', onTouchStart, {passive: false});
+viewport.addEventListener('touchmove', onTouchMove, {passive: false});
+viewport.addEventListener('touchend', onTouchEnd);
+// Мышь (для тестов на ПК)
+viewport.addEventListener('mousedown', (e)=>{ e.touches=[e]; onTouchStart(e); });
+viewport.addEventListener('mousemove', (e)=>{ if(isDrawing) {e.touches=[e]; onTouchMove(e);} });
+viewport.addEventListener('mouseup', onTouchEnd);
+
+function onTouchStart(e) {
+    if(e.touches.length === 2) {
+        // Начало жеста (зум/пан)
+        isDrawing = false;
+        startDist = getDist(e.touches);
+        startScale = scale;
+        const mid = getMid(e.touches);
+        startX = mid.x - pointX;
+        startY = mid.y - pointY;
+        return;
+    }
+    if(e.touches.length === 1) {
+        // Рисование
+        if(mode === 'fill') {
+            ctx.fillStyle = getColor(); 
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+            return;
+        }
+        isDrawing = true;
+        const p = getCanvasPos(e);
+        lastX = p.x; lastY = p.y;
+        // Точка (если просто ткнули)
+        ctx.fillStyle = getColor();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, sizeEl.value/2, 0, Math.PI*2);
+        ctx.fill();
+    }
+}
+
+function onTouchMove(e) {
+    e.preventDefault(); // Блокируем скролл браузера
+
+    // Жест 2 пальцами
+    if(e.touches.length === 2) {
+        isDrawing = false;
+        // Зум
+        const newDist = getDist(e.touches);
+        scale = startScale * (newDist / startDist);
+        if(scale < 0.1) scale = 0.1;
+        if(scale > 10) scale = 10;
+        
+        // Пан (Сдвиг)
+        const mid = getMid(e.touches);
+        pointX = mid.x - startX;
+        pointY = mid.y - startY;
+        
+        updateTransform();
+        return;
+    }
+
+    // Рисование 1 пальцем
+    if(isDrawing && e.touches.length === 1) {
+        const p = getCanvasPos(e);
+        
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(p.x, p.y);
+        
+        ctx.strokeStyle = getColor();
+        ctx.lineWidth = sizeEl.value;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        
+        if(mode === 'erase') {
+            ctx.globalCompositeOperation = 'destination-out';
+        } else {
+            ctx.globalCompositeOperation = 'source-over';
+        }
+        
+        ctx.stroke();
+        lastX = p.x; lastY = p.y;
+    }
+}
+
+function onTouchEnd() {
+    isDrawing = false;
+    ctx.beginPath(); // Сброс пути
+}
+
+function resetView() {
+    scale = 1;
+    centerCanvas();
+}
+
+// Предотвращаем баги слайдеров
+document.querySelectorAll('input[type=range]').forEach(i => {
+    i.addEventListener('touchstart', e => e.stopPropagation());
+    i.addEventListener('touchmove', e => e.stopPropagation());
+});
+
+// Старт
+clearCanvas();
+updColor();
+setTimeout(centerCanvas, 100);
+
+</script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, doc, updateDoc, increment, deleteDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-  
+
   const firebaseConfig = {
     apiKey: "AIzaSyCekB6vZ6qGAnvDO1LOA7OUGmA3zU1aLoA",
     authDomain: "suno-gallery.firebaseapp.com",
@@ -298,356 +415,82 @@ canvas {
     measurementId: "G-2J4PNZX4CV"
   };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const galleryRef = collection(db, "drawings"); 
+  let db, galleryRef;
+  let USER_ID = localStorage.getItem("u_id") || 'u_'+Date.now();
+  localStorage.setItem("u_id", USER_ID);
 
-  let USER_ID = localStorage.getItem("user_id");
-  if (!USER_ID) {
-      USER_ID = 'user_' + Math.random().toString(36).substring(2, 15);
-      localStorage.setItem("user_id", USER_ID);
+  try {
+      const app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+      galleryRef = collection(db, "drawings");
+      console.log("Firebase OK");
+  } catch(e) {
+      console.error("Firebase Error:", e);
   }
 
-  // Элементы
-  const canvas = document.getElementById("canvas");
-  const ctx = canvas.getContext("2d");
-  const viewport = document.getElementById("viewport");
-  
-  const colorPreview = document.getElementById("colorPreview");
-  const rEl = document.getElementById("r");
-  const gEl = document.getElementById("g");
-  const bEl = document.getElementById("b");
-  const sizeEl = document.getElementById("size");
-  const loader = document.getElementById("loader");
-  const toolButtons = document.querySelectorAll('.tool-button');
-
-  // Состояние
-  window.mode = "draw";
-  
-  // --- ПЕРЕМЕННЫЕ ДЛЯ ЗУМА И ПАНА (IBIS STYLE) ---
-  let scale = 1;
-  let panning = false;
-  let pointX = 0;
-  let pointY = 0;
-  let startX = 0;
-  let startY = 0;
-  let lastX = 0;
-  let lastY = 0;
-  let isGesture = false;
-  let startDist = 0;
-  let startScale = 1;
-
-  // Инициализация позиции холста по центру
-  function centerCanvas() {
-      const vw = viewport.clientWidth;
-      const vh = viewport.clientHeight;
-      pointX = (vw - canvas.width) / 2;
-      pointY = (vh - canvas.height) / 2;
-      updateTransform();
-  }
-  
-  window.resetView = () => {
-      scale = 1;
-      centerCanvas();
-  }
-
-  // --- ИНТЕРФЕЙС ---
-
-  window.toggleToolsPanel = () => {
-      const el = document.getElementById("tools");
-      el.style.display = (getComputedStyle(el).display === "flex") ? "none" : "flex";
-  }
-  
-  window.toggleColorPanel = () => {
-      const el = document.getElementById("color-panel");
-      el.style.display = (getComputedStyle(el).display === "flex") ? "none" : "flex";
-  }
-
-  window.toggleGallery = () => {
-    const g = document.getElementById("gallery");
-    if (getComputedStyle(g).display === "none") {
-        g.style.display = "flex";
-        loadGlobalGallery(); 
-    } else {
-        g.style.display = "none";
-    }
-  };
-  
-  window.setMode = (newMode, btn) => {
-      window.mode = newMode;
-      toolButtons.forEach(button => button.classList.remove('active'));
-      if(btn) btn.classList.add('active');
-  }
-
-  window.updateColorPreview = () => {
-    const r = rEl.value;
-    const g = gEl.value;
-    const b = bEl.value;
-    colorPreview.style.backgroundColor = `rgb(${r},${g},${b})`;
-    document.getElementById('r_val').textContent = r;
-    document.getElementById('g_val').textContent = g;
-    document.getElementById('b_val').textContent = b;
-  };
-
-  function getColor() {
-    return `rgb(${rEl.value},${gEl.value},${bEl.value})`;
-  }
-
-  // --- ФИКС ПОЛЗУНКОВ ---
-  // Мы используем stopPropagation, чтобы события не доходили до вьюпорта и не вызывали рисование
-  document.querySelectorAll('input[type="range"]').forEach(slider => {
-      slider.addEventListener('touchstart', (e) => e.stopPropagation(), {passive: false});
-      slider.addEventListener('touchmove', (e) => e.stopPropagation(), {passive: false});
-  });
-
-  window.resizeCanvas = () => {
-      const w = parseInt(document.getElementById('canvasW').value) || 360;
-      const h = parseInt(document.getElementById('canvasH').value) || 500;
-      
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = canvas.width;
-      tempCanvas.height = canvas.height;
-      tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
-
-      canvas.width = w;
-      canvas.height = h;
-      
-      ctx.drawImage(tempCanvas, 0, 0);
-      centerCanvas(); // Центрируем после ресайза
-  }
-
-  window.downloadCanvas = () => {
-    const link = document.createElement('a');
-    link.download = 'suno_art.png';
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-  }
-
-  // --- ЛОГИКА ЖЕСТОВ И РИСОВАНИЯ ---
-
-  function updateTransform() {
-      // Применяем CSS трансформацию к холсту
-      canvas.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
-  }
-
-  // Получить координаты рисования на холсте с учетом зума и сдвига
-  function getPaintPosition(e) {
-      // Координаты клика относительно Viewport (контейнера)
-      const rect = viewport.getBoundingClientRect();
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      
-      const viewX = clientX - rect.left;
-      const viewY = clientY - rect.top;
-
-      // Математика обратной трансформации:
-      // (КоординатаВьюпорта - Сдвиг) / Масштаб = КоординатаХолста
-      return {
-          x: (viewX - pointX) / scale,
-          y: (viewY - pointY) / scale
-      };
-  }
-  
-  function getDistance(touches) {
-      return Math.hypot(
-          touches[0].clientX - touches[1].clientX,
-          touches[0].clientY - touches[1].clientY
-      );
-  }
-  
-  function getMidpoint(touches) {
-      return {
-          x: (touches[0].clientX + touches[1].clientX) / 2,
-          y: (touches[0].clientY + touches[1].clientY) / 2
-      };
-  }
-
-  // События вешаем на Viewport, так как он занимает весь экран
-  viewport.addEventListener('mousedown', onPointerDown);
-  viewport.addEventListener('touchstart', onPointerDown, {passive: false});
-  
-  viewport.addEventListener('mousemove', onPointerMove);
-  viewport.addEventListener('touchmove', onPointerMove, {passive: false});
-  
-  viewport.addEventListener('mouseup', onPointerUp);
-  viewport.addEventListener('touchend', onPointerUp);
-  viewport.addEventListener('mouseleave', onPointerUp);
-
-  function onPointerDown(e) {
-      // Если 2 пальца - начало жеста
-      if (e.touches && e.touches.length === 2) {
-          isGesture = true;
-          startDist = getDistance(e.touches);
-          startScale = scale;
-          
-          const mid = getMidpoint(e.touches);
-          startX = mid.x - pointX; // Запоминаем смещение относительно текущей позиции
-          startY = mid.y - pointY;
-          return;
-      }
-
-      // Если 1 палец/мышь - Рисование
-      if ((!e.touches || e.touches.length === 1) && !isGesture) {
-          if (window.mode === 'fill') {
-               ctx.fillStyle = getColor();
-               ctx.fillRect(0,0,canvas.width,canvas.height);
-               return;
-          }
-          
-          window.drawing = true;
-          const p = getPaintPosition(e);
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          lastX = p.x;
-          lastY = p.y;
-      }
-  }
-
-  function onPointerMove(e) {
-      e.preventDefault(); // Блокируем скролл страницы
-
-      // Логика 2 пальцев (Зум и Пан)
-      if (e.touches && e.touches.length === 2) {
-          isGesture = true;
-          window.drawing = false; // Прекращаем рисовать
-
-          // 1. Zoom
-          const newDist = getDistance(e.touches);
-          const scaleMultiplier = newDist / startDist;
-          let newScale = startScale * scaleMultiplier;
-          
-          // Ограничители зума
-          if (newScale < 0.5) newScale = 0.5;
-          if (newScale > 5.0) newScale = 5.0;
-          scale = newScale;
-
-          // 2. Pan (Перемещение)
-          const mid = getMidpoint(e.touches);
-          pointX = mid.x - startX; 
-          pointY = mid.y - startY;
-
-          updateTransform();
-          return;
-      }
-
-      // Логика Рисования (если не жест)
-      if (window.drawing && !isGesture) {
-          const p = getPaintPosition(e);
-          
-          const lineWidth = sizeEl.value;
-          
-          if (window.mode === "draw") {
-              ctx.globalCompositeOperation = "source-over";
-              ctx.strokeStyle = getColor();
-              ctx.lineWidth = lineWidth;
-          } else if (window.mode === "erase") {
-              ctx.globalCompositeOperation = "destination-out";
-              ctx.lineWidth = lineWidth;
-          }
-          
-          // Интерполяция для плавности (особенно при зуме)
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          ctx.beginPath();
-          ctx.moveTo(lastX, lastY);
-          ctx.lineTo(p.x, p.y);
-          ctx.stroke();
-          
-          lastX = p.x;
-          lastY = p.y;
-      }
-  }
-
-  function onPointerUp(e) {
-      window.drawing = false;
-      if (e.touches && e.touches.length < 2) {
-          isGesture = false;
-      }
-  }
-
-  window.clearCanvas = () => {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-  }
-  
-  // --- FIREBASE (Без изменений логики) ---
-  window.saveToFirebase = async () => {
-    if(!confirm("Опубликовать?")) return;
-    loader.style.display = "inline"; 
-    try {
-        const imgData = canvas.toDataURL("image/png");
-        await addDoc(galleryRef, {
-            image: imgData,
-            date: Date.now(),
-            deleteVotes: 0,       
-            voters: []            
-        });
-        alert("Опубликовано!");
-        window.toggleGallery(); 
-    } catch (e) {
-        console.error(e);
-        alert("Ошибка: " + e.message);
-    } finally {
-        loader.style.display = "none";
-    }
-  };
-
-  window.voteToDelete = async (docId, currentVotes, currentVoters) => {
-      if (!confirm("Пожаловаться (18+)?")) return;
-      if (currentVoters.includes(USER_ID)) { alert("Вы уже голосовали."); return; }
-      
-      const docRef = doc(db, "drawings", docId);
+  // Привязываем функции к window, чтобы кнопки их видели
+  window.saveToCloud = async () => {
+      if(!db) { alert("Нет соединения с базой!"); return; }
+      if(!confirm("Опубликовать?")) return;
       try {
-          const newVotes = currentVotes + 1;
-          if (newVotes >= 10) {
-              await deleteDoc(docRef);
-              alert("Удалено.");
-              loadGlobalGallery();
-          } else {
-              await updateDoc(docRef, { deleteVotes: increment(1), voters: arrayUnion(USER_ID) });
-              alert(`Голос принят. ${newVotes}/10`);
-              document.getElementById(`votes-${docId}`).textContent = `🚨 ${newVotes}/10`;
-          }
-      } catch (e) { console.error(e); }
+          await addDoc(galleryRef, {
+              image: canvas.toDataURL(),
+              date: Date.now(),
+              deleteVotes: 0,
+              voters: []
+          });
+          alert("Готово!");
+          window.toggleGallery();
+      } catch(e) { alert("Ошибка: "+e.message); }
   };
 
-  async function loadGlobalGallery() {
-    const content = document.getElementById("galleryContent");
-    content.innerHTML = "<p style='color:#0f0'>Загрузка...</p>";
-    try {
-        const q = query(galleryRef, orderBy("date", "desc"), limit(20));
-        const querySnapshot = await getDocs(q);
-        content.innerHTML = ""; 
-        if(querySnapshot.empty) { content.innerHTML = "<p>Пусто.</p>"; return; }
-
-        querySnapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            const div = document.createElement("div");
-            div.className = "gallery-item";
-            
-            const img = new Image();
-            img.src = data.image;
-            img.onclick = () => {
-                if(confirm("Редактировать этот рисунок?")) {
-                    const pic = new Image();
-                    pic.src = data.image;
-                    pic.onload = () => {
-                        window.clearCanvas(); 
-                        ctx.drawImage(pic, 0,0);
-                        centerCanvas();
+  window.loadCloudGallery = async () => {
+      const el = document.getElementById("galleryContent");
+      if(!db) { el.innerHTML = "Нет соединения."; return; }
+      
+      el.innerHTML = "Загрузка...";
+      try {
+          const q = query(galleryRef, orderBy("date", "desc"), limit(20));
+          const snap = await getDocs(q);
+          el.innerHTML = "";
+          snap.forEach(docSnap => {
+             const data = docSnap.data();
+             const div = document.createElement("div");
+             div.className = "gallery-item";
+             div.innerHTML = `
+                <img src="${data.image}">
+                <div style="margin-top:5px; color:#555; font-size:10px;">Votes: ${data.deleteVotes || 0}/10</div>
+                <button class="danger-btn" style="padding:2px 5px; font-size:10px; margin-top:5px;">Report</button>
+             `;
+             // Клик по картинке - загрузка
+             div.querySelector('img').onclick = () => {
+                 if(confirm("Загрузить рисунок?")) {
+                    const i = new Image(); i.src = data.image;
+                    i.onload = () => {
+                        window.clearCanvas();
+                        ctx.drawImage(i,0,0);
                     }
                     window.toggleGallery();
-                }
-            };
-            
-            const btn = document.createElement("button");
-            btn.classList.add('danger-btn');
-            btn.textContent = "Report";
-            btn.style.fontSize = "10px";
-            btn.style.marginTop = "5px";
-            btn.onclick = () => window.voteToDelete(docSnap.id, data.deleteVotes || 0, data.voters || []);
-            
-            const info = document.createElement("div");
-            info.innerHTML = `<span id="votes-${docSnap.id}" style="col
+                 }
+             };
+             // Клик по Report
+             div.querySelector('button').onclick = async () => {
+                 if(data.voters && data.voters.includes(USER_ID)) { alert("Уже голосовали"); return; }
+                 if(!confirm("Пожаловаться?")) return;
+                 const newV = (data.deleteVotes||0) + 1;
+                 const ref = doc(db, "drawings", docSnap.id);
+                 if(newV >= 10) { await deleteDoc(ref); div.remove(); }
+                 else {
+                     await updateDoc(ref, { deleteVotes: increment(1), voters: arrayUnion(USER_ID) });
+                     alert("Голос учтен");
+                 }
+             };
+             el.appendChild(div);
+          });
+      } catch(e) { el.innerHTML = "Ошибка загрузки."; }
+  };
+</script>
+
+</body>
+  </html>
+  
