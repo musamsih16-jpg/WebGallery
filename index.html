@@ -24,11 +24,18 @@ button:disabled { opacity: 0.3; }
 canvas { position: absolute; background: #fff; transform-origin: 0 0; }
 .floating-panel {
   position: fixed; top: 70px; background: rgba(30,30,30,0.95); border: 1px solid #666;
-  border-radius: 8px; padding: 15px; display: none; flex-direction: column; gap: 12px; z-index: 10000;
-  max-height: 70vh; overflow-y: auto;
+  border-radius: 8px; padding: 15px; display: none; flex-direction: column; gap: 10px; z-index: 10000;
+  max-height: 80vh; overflow-y: auto; width: 220px;
 }
-#color-preview { width: 100%; height: 40px; border: 2px solid #fff; border-radius: 4px; background: #000; }
-input[type=range] { width: 100%; height: 25px; }
+.preview-container { display: flex; flex-direction: column; gap: 5px; margin-bottom: 5px; }
+#color-preview { width: 100%; height: 30px; border: 2px solid #fff; border-radius: 4px; background: #000; }
+#size-preview-box { 
+    width: 100%; height: 60px; background: #000; border-radius: 4px; border: 1px solid #555;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+#size-indicator { background: #fff; border-radius: 50%; transition: 0.1s; }
+.label-row { display: flex; justify-content: space-between; font-size: 12px; color: #aaa; margin-top: 5px; }
+input[type=range] { width: 100%; height: 20px; cursor: pointer; }
 #gallery-overlay { position: fixed; inset: 0; background: #000; z-index: 20000; display: none; flex-direction: column; padding: 15px; }
 #gallery-content { margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; overflow-y: auto; }
 .art-card { background: #222; padding: 5px; border-radius: 6px; text-align: center; }
@@ -54,8 +61,7 @@ input[type=range] { width: 100%; height: 25px; }
   <button onclick="clearCanvas()" style="color:red">🗑</button>
 </div>
 
-<div id="lang-panel" class="floating-panel" style="left:50%; transform: translateX(-50%);">
-  </div>
+<div id="lang-panel" class="floating-panel" style="left:50%; transform: translateX(-50%);"></div>
 
 <div id="tools-panel" class="floating-panel" style="left:10px">
   <button onclick="setMode('draw')" id="m-brush">✏️ Кисть</button>
@@ -65,11 +71,24 @@ input[type=range] { width: 100%; height: 25px; }
   <input type="file" id="fileIn" hidden accept="image/*" onchange="handleImage(event)">
 </div>
 
-<div id="colors-panel" class="floating-panel" style="right:10px; width:200px">
-  <div id="color-preview"></div>
-  <input type="range" id="size" min="1" max="100" value="5">
+<div id="colors-panel" class="floating-panel" style="right:10px">
+  <div class="preview-container">
+    <div id="color-preview"></div>
+    <div id="size-preview-box">
+        <div id="size-indicator"></div>
+    </div>
+  </div>
+  
+  <div class="label-row"><span id="lbl-size">Размер</span><span id="val-size">5</span></div>
+  <input type="range" id="size" min="1" max="100" value="5" oninput="updColor()">
+  
+  <div class="label-row"><span>R</span><span id="val-r">0</span></div>
   <input type="range" id="r" max="255" value="0" oninput="updColor()">
+  
+  <div class="label-row"><span>G</span><span id="val-g">0</span></div>
   <input type="range" id="g" max="255" value="0" oninput="updColor()">
+  
+  <div class="label-row"><span>B</span><span id="val-b">0</span></div>
   <input type="range" id="b" max="255" value="0" oninput="updColor()">
 </div>
 
@@ -133,24 +152,22 @@ window.loadGlobalGallery = async () => {
 </script>
 
 <script>
-// --- ПЕРЕВОДЫ ---
 const translations = {
-    "az": { name: "Azərbaycan", global: "🌍 Qlobal", save: "☁️ Yayımla", brush: "✏️ Fırça", erase: "🧽 Pozan", fill: "⬛ Doldurma", photo: "📁 Şəkil", close: "❌ Bağla", confirm: "Dərc edilsin?", success: "Dərc edildi!", loading: "Yüklənir...", report: "Şikayət", reported: "Şikayət edildi", confirm_report: "Şikayət edilsin?" },
-    "en": { name: "English", global: "🌍 Global", save: "☁️ Launch", brush: "✏️ Brush", erase: "🧽 Eraser", fill: "⬛ Fill", photo: "📁 Photo", close: "❌ Close", confirm: "Publish?", success: "Published!", loading: "Loading...", report: "Report", reported: "Reported", confirm_report: "Confirm report?" },
-    "fr": { name: "Français", global: "🌍 Global", save: "☁️ Publier", brush: "✏️ Pinceau", erase: "🧽 Gomme", fill: "⬛ Remplir", photo: "📁 Photo", close: "❌ Fermer", confirm: "Publier?", success: "Publié!", loading: "Chargement...", report: "Signaler", reported: "Signalé", confirm_report: "Confirmer le signalement?" },
-    "de": { name: "Deutsch", global: "🌍 Global", save: "☁️ Starten", brush: "✏️ Pinsel", erase: "🧽 Radierer", fill: "⬛ Füllen", photo: "📁 Foto", close: "❌ Schließen", confirm: "Veröffentlichen?", success: "Veröffentlicht!", loading: "Laden...", report: "Melden", reported: "Gemeldet", confirm_report: "Meldung bestätigen?" },
-    "it": { name: "Italiano", global: "🌍 Globale", save: "☁️ Avvia", brush: "✏️ Pennello", erase: "🧽 Gomma", fill: "⬛ Riempi", photo: "📁 Foto", close: "❌ Chiudi", confirm: "Pubblicare?", success: "Pubblicato!", loading: "Caricamento...", report: "Segnala", reported: "Segnalato", confirm_report: "Confermi la segnalazione?" },
-    "jp": { name: "日本語", global: "🌍 グローバル", save: "☁️ 公開する", brush: "✏️ ブラシ", erase: "🧽 消しゴム", fill: "⬛ 塗りつぶし", photo: "📁 写真", close: "❌ 閉じる", confirm: "公開しますか？", success: "公開されました！", loading: "読み込み中...", report: "通報", reported: "通報済み", confirm_report: "通報しますか？" },
-    "ko": { name: "한국어", global: "🌍 글로벌", save: "☁️ 게시하기", brush: "✏️ 브러시", erase: "🧽 지우개", fill: "⬛ 채우기", photo: "📁 사진", close: "❌ 닫기", confirm: "게시하시겠습니까?", success: "게시되었습니다!", loading: "로딩 중...", report: "신고", reported: "신고됨", confirm_report: "신고하시겠습니까?" },
-    "pt": { name: "Português", global: "🌍 Global", save: "☁️ Iniciar", brush: "✏️ Pincel", erase: "🧽 Borracha", fill: "⬛ Preencher", photo: "📁 Foto", close: "❌ Fechar", confirm: "Publicar?", success: "Publicado!", loading: "Carregando...", report: "Denunciar", reported: "Denunciado", confirm_report: "Confirmar denúncia?" },
-    "ru": { name: "Русский", global: "🌍 Глобально", save: "☁️ Запустить", brush: "✏️ Кисть", erase: "🧽 Ластик", fill: "⬛ Заливка", photo: "📁 Фото", close: "❌ Закрыть", confirm: "Опубликовать?", success: "Опубликовано!", loading: "Загрузка...", report: "Жалоба", reported: "Отправлено", confirm_report: "Пожаловаться?" },
-    "es": { name: "Español", global: "🌍 Global", save: "☁️ Lanzar", brush: "✏️ Pincel", erase: "🧽 Borrador", fill: "⬛ Rellenar", photo: "📁 Foto", close: "❌ Cerrar", confirm: "¿Publicar?", success: "¡Publicado!", loading: "Cargando...", report: "Reportar", reported: "Reportado", confirm_report: "¿Confirmar reporte?" },
-    "tr": { name: "Türkçe", global: "🌍 Küresel", save: "☁️ Başlat", brush: "✏️ Fırça", erase: "🧽 Silgi", fill: "⬛ Doldur", photo: "📁 Fotoğraf", close: "❌ Kapat", confirm: "Yayınlansın mı?", success: "Yayınlandı!", loading: "Yükleniyor...", report: "Bildir", reported: "Bildirildi", confirm_report: "Bildirmeyi onayla?" },
-    "zh": { name: "中文", global: "🌍 全球", save: "☁️ 发布", brush: "✏️ 画笔", erase: "🧽 橡皮擦", fill: "⬛ 填充", photo: "📁 照片", close: "❌ 关闭", confirm: "确定发布吗？", success: "已发布！", loading: "加载中...", report: "举报", reported: "已举报", confirm_report: "确定举报吗？" }
+    "az": { name: "Azərbaycan", global: "🌍 Qlobal", save: "☁️ Yayımla", brush: "✏️ Fırça", erase: "🧽 Pozan", fill: "⬛ Doldurma", photo: "📁 Şəkil", close: "❌ Bağla", confirm: "Dərc edilsin?", success: "Dərc edildi!", loading: "Yüklənir...", report: "Şikayət", reported: "Şikayət edildi", confirm_report: "Şikayət edilsin?", size: "Ölçü" },
+    "de": { name: "Deutsch", global: "🌍 Global", save: "☁️ Starten", brush: "✏️ Pinsel", erase: "🧽 Radierer", fill: "⬛ Füllen", photo: "📁 Foto", close: "❌ Schließen", confirm: "Veröffentlichen?", success: "Veröffentlicht!", loading: "Laden...", report: "Melden", reported: "Gemeldet", confirm_report: "Meldung bestätigen?", size: "Größe" },
+    "en": { name: "English", global: "🌍 Global", save: "☁️ Launch", brush: "✏️ Brush", erase: "🧽 Eraser", fill: "⬛ Fill", photo: "📁 Photo", close: "❌ Close", confirm: "Publish?", success: "Published!", loading: "Loading...", report: "Report", reported: "Reported", confirm_report: "Confirm report?", size: "Size" },
+    "es": { name: "Español", global: "🌍 Global", save: "☁️ Lanzar", brush: "✏️ Pincel", erase: "🧽 Borrador", fill: "⬛ Rellenar", photo: "📁 Foto", close: "❌ Cerrar", confirm: "¿Publicar?", success: "¡Publicado!", loading: "Cargando...", report: "Reportar", reported: "Reportado", confirm_report: "¿Confirmar reporte?", size: "Tamaño" },
+    "fr": { name: "Français", global: "🌍 Global", save: "☁️ Publier", brush: "✏️ Pinceau", erase: "🧽 Gomme", fill: "⬛ Remplir", photo: "📁 Photo", close: "❌ Fermer", confirm: "Publier?", success: "Publié!", loading: "Chargement...", report: "Signaler", reported: "Signalé", confirm_report: "Confirmer le signalement?", size: "Taille" },
+    "it": { name: "Italiano", global: "🌍 Globale", save: "☁️ Avvia", brush: "✏️ Pennello", erase: "🧽 Gomma", fill: "⬛ Riempi", photo: "📁 Foto", close: "❌ Chiudi", confirm: "Pubblicare?", success: "Pubblicato!", loading: "Caricamento...", report: "Segnala", reported: "Segnalato", confirm_report: "Confermi la segnalazione?", size: "Dimensione" },
+    "jp": { name: "日本語", global: "🌍 グローバル", save: "☁️ 公開する", brush: "✏️ ブラシ", erase: "🧽 消しゴム", fill: "⬛ 塗りつぶし", photo: "📁 写真", close: "❌ 閉じる", confirm: "公開しますか？", success: "公開されました！", loading: "読み込み中...", report: "通報", reported: "通報済み", confirm_report: "通報しますか？", size: "サイズ" },
+    "ko": { name: "한국어", global: "🌍 글로벌", save: "☁️ 게시하기", brush: "✏️ 브러시", erase: "🧽 지우개", fill: "⬛ 채우기", photo: "📁 사진", close: "❌ 닫기", confirm: "게시하시겠습니까?", success: "게시되었습니다!", loading: "로딩 중...", report: "신고", reported: "신고됨", confirm_report: "신고하시겠습니까?", size: "크기" },
+    "pt": { name: "Português", global: "🌍 Global", save: "☁️ Iniciar", brush: "✏️ Pincel", erase: "🧽 Borracha", fill: "⬛ Preencher", photo: "📁 Foto", close: "❌ Fechar", confirm: "Publicar?", success: "Publicado!", loading: "Carregando...", report: "Denunciar", reported: "Denunciado", confirm_report: "Confirmar denúncia?", size: "Tamanho" },
+    "ru": { name: "Русский", global: "🌍 Глобально", save: "☁️ Запустить", brush: "✏️ Кисть", erase: "🧽 Ластик", fill: "⬛ Заливка", photo: "📁 Фото", close: "❌ Закрыть", confirm: "Опубликовать?", success: "Опубликовано!", loading: "Загрузка...", report: "Жалоба", reported: "Отправлено", confirm_report: "Пожаловаться?", size: "Размер" },
+    "tr": { name: "Türkçe", global: "🌍 Küresel", save: "☁️ Başlat", brush: "✏️ Fırça", erase: "🧽 Silgi", fill: "⬛ Doldur", photo: "📁 Fotoğraf", close: "❌ Kapat", confirm: "Yayınlansın mı?", success: "Yayınlandı!", loading: "Yükleniyor...", report: "Bildir", reported: "Bildirildi", confirm_report: "Bildirmeyi onayla?", size: "Boyut" },
+    "zh": { name: "中文", global: "🌍 全球", save: "☁️ 发布", brush: "✏️ 画笔", erase: "🧽 橡皮擦", fill: "⬛ 填充", photo: "📁 照片", close: "❌ 关闭", confirm: "确定发布吗？", success: "已发布！", loading: "加载中...", report: "举报", reported: "已举报", confirm_report: "确定举报吗？", size: "大小" }
 };
 
 let currentLang = localStorage.getItem('lang') || 'ru';
-
 window.t = (key) => translations[currentLang][key] || key;
 
 function applyLang() {
@@ -161,6 +178,7 @@ function applyLang() {
     document.getElementById('m-fill').innerText = window.t('fill');
     document.getElementById('m-photo').innerText = window.t('photo');
     document.getElementById('btn-close-gallery').innerText = window.t('close');
+    document.getElementById('lbl-size').innerText = window.t('size');
 }
 
 function initLangMenu() {
@@ -169,6 +187,7 @@ function initLangMenu() {
     sortedKeys.forEach(lang => {
         const btn = document.createElement('button');
         btn.innerText = translations[lang].name;
+        btn.style.width = "100%";
         btn.onclick = () => {
             currentLang = lang;
             localStorage.setItem('lang', lang);
@@ -179,15 +198,33 @@ function initLangMenu() {
     });
 }
 
-// --- ОСНОВНОЙ КОД ХОЛСТА ---
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const viewport = document.getElementById("viewport");
 const preview = document.getElementById("color-preview");
+const sizeInd = document.getElementById("size-indicator");
 
 let scale = 1, pX = 0, pY = 0, mode = "draw", isDrawing = false, lastX = 0, lastY = 0;
 let history = [];
 let historyStep = -1;
+
+function updColor() {
+    const r = document.getElementById('r').value;
+    const g = document.getElementById('g').value;
+    const b = document.getElementById('b').value;
+    const s = document.getElementById('size').value;
+    
+    const color = `rgb(${r},${g},${b})`;
+    preview.style.background = color;
+    sizeInd.style.background = color;
+    sizeInd.style.width = s + "px";
+    sizeInd.style.height = s + "px";
+    
+    document.getElementById('val-r').innerText = r;
+    document.getElementById('val-g').innerText = g;
+    document.getElementById('val-b').innerText = b;
+    document.getElementById('val-size').innerText = s;
+}
 
 function saveHistory() {
     historyStep++;
@@ -214,10 +251,6 @@ function redo() {
     }
 }
 
-function updColor() {
-    preview.style.background = `rgb(${document.getElementById('r').value},${document.getElementById('g').value},${document.getElementById('b').value})`;
-}
-
 function toggle(id) {
     const el = document.getElementById(id);
     const isVisible = el.style.display === 'flex';
@@ -227,18 +260,14 @@ function toggle(id) {
 
 function toggleGallery() {
     const gal = document.getElementById("gallery-overlay");
-    if(gal.style.display === 'flex') {
-        gal.style.display = 'none';
-    } else {
-        gal.style.display = 'flex';
-        window.loadGlobalGallery();
-    }
+    gal.style.display = (gal.style.display === 'flex') ? 'none' : 'flex';
+    if(gal.style.display === 'flex') window.loadGlobalGallery();
 }
 
 function setMode(m) { mode = m; toggle('tools-panel'); }
 
 function clearCanvas() { 
-    if(!confirm("Clear?")) return;
+    if(!confirm("Reset?")) return;
     ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,canvas.width,canvas.height); 
     saveHistory();
 }
@@ -309,20 +338,20 @@ viewport.addEventListener('touchmove', e => {
 
 window.addEventListener('touchend', () => { if(isDrawing) saveHistory(); isDrawing = false; });
 
-// Старт
 ctx.fillStyle = "#fff"; ctx.fillRect(0,0,360,500);
 saveHistory();
-updColor();
 initLangMenu();
 applyLang();
+updColor();
 setTimeout(resetView, 200);
 
 window.downloadImg = () => {
     const link = document.createElement('a');
-    link.download = 'canvas.jpg';
+    link.download = 'art.jpg';
     link.href = canvas.toDataURL('image/jpeg');
     link.click();
 };
 </script>
 </body>
-</html>
+                                  </html>
+  
