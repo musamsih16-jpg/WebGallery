@@ -16,510 +16,478 @@
 
 body {
   margin: 0; padding: 0; 
-  background: var(--bg-gradient);
-  color: var(--text-color);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-  height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+  background: var(--bg-gradient); color: var(--text-color);
+  font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden;
 }
 
-/* Элементы интерфейса Liquid Glass */
 .glass-panel {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
 #top-bar {
-  padding: 10px; display: flex; gap: 10px; align-items: center;
-  border-bottom: 1px solid var(--glass-border); overflow-x: auto; white-space: nowrap; flex-shrink: 0; z-index: 9999;
-}
-
-.size-inputs { display: flex; align-items: center; gap: 5px; }
-.size-inputs input, .fps-select { 
-  background: rgba(0,0,0,0.4); color: #fff; border: 1px solid var(--glass-border); 
-  border-radius: 8px; padding: 6px 10px; outline: none; font-size: 14px;
+  padding: 10px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--glass-border);
+  overflow-x: auto; white-space: nowrap; flex-shrink: 0; z-index: 9999;
 }
 
 button { 
   background: var(--glass-bg); color: #fff; border: 1px solid var(--glass-border); 
-  border-radius: 8px; padding: 8px 14px; font-size: 14px; cursor: pointer;
-  transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 8px; padding: 8px 12px; font-size: 14px; cursor: pointer; transition: all 0.2s ease;
 }
 button:active { transform: scale(0.95); background: rgba(255,255,255,0.15); }
-button:disabled { opacity: 0.2; transform: none; }
-.btn-accent { background: var(--accent); border-color: transparent; box-shadow: 0 0 15px var(--accent-glow); }
+.btn-accent { background: var(--accent); border-color: transparent; box-shadow: 0 0 10px var(--accent-glow); }
 
-#viewport { flex-grow: 1; position: relative; overflow: hidden; touch-action: none; display: flex; align-items: center; justify-content: center; }
-canvas { position: absolute; background: #fff; transform-origin: center center; box-shadow: 0 15px 35px rgba(0,0,0,0.5); border-radius: 4px; }
+.fps-select { background: rgba(0,0,0,0.4); color: #fff; border: 1px solid var(--glass-border); border-radius: 8px; padding: 6px; }
 
-.floating-panel {
-  position: fixed; top: 75px; border-radius: 12px; padding: 15px; display: none; flex-direction: column; gap: 10px; z-index: 10000;
-  max-height: 70vh; overflow-y: auto; width: 220px;
-}
+#viewport { flex-grow: 1; position: relative; overflow: hidden; touch-action: none; background: #111; }
+canvas { position: absolute; background: #fff; transform-origin: 0 0; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
 
-/* Временная шкала слоев внизу (Timeline) */
+/* FlipaClip Timeline Style */
 #timeline-container {
-  height: 95px; border-top: 1px solid var(--glass-border); display: flex; align-items: center; padding: 0 15px; gap: 12px; overflow-x: auto; flex-shrink: 0; z-index: 999;
+  height: 90px; border-top: 1px solid var(--glass-border); display: flex; align-items: center; 
+  padding: 0 10px; gap: 10px; overflow-x: auto; flex-shrink: 0; background: #1a1a24;
 }
 .layer-slot {
-  width: 60px; height: 75px; background: rgba(0,0,0,0.3); border: 2px solid #444; border-radius: 8px; flex-shrink: 0;
-  position: relative; overflow: hidden; cursor: pointer; transition: all 0.15s ease; box-sizing: border-box;
+  width: 55px; height: 70px; background: #fff; border: 2px solid transparent; border-radius: 6px; 
+  flex-shrink: 0; position: relative; cursor: pointer; box-sizing: border-box; overflow: hidden;
 }
 .layer-slot.active { border-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); transform: scale(1.05); }
-.layer-slot img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
-.layer-number { position: absolute; bottom: 2px; right: 4px; font-size: 10px; background: rgba(0,0,0,0.6); padding: 1px 4px; border-radius: 4px; }
-
-#add-layer-btn { width: 60px; height: 70px; font-size: 24px; border-style: dashed; border-radius: 8px; color: #aaa; flex-shrink: 0; }
-
-/* Контекстное меню при зажатии слоя */
-#context-menu {
-  position: fixed; z-index: 25000; display: none; flex-direction: column; gap: 5px; width: 150px; padding: 8px; border-radius: 10px;
+.layer-slot img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; background: #fff; }
+.layer-number { position: absolute; bottom: 2px; right: 4px; font-size: 10px; background: rgba(0,0,0,0.7); padding: 1px 4px; border-radius: 4px; color: #fff; }
+#btn-add-frame {
+  width: 55px; height: 70px; border: 2px dashed #666; border-radius: 6px; background: rgba(255,255,255,0.05);
+  color: #aaa; font-size: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer;
 }
 
-/* Остальные контейнеры */
-.preview-container { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; }
-#color-preview { width: 100%; height: 25px; border-radius: 4px; }
-#size-preview-box { width: 100%; height: 70px; background: rgba(0,0,0,0.5); border-radius: 4px; display: flex; align-items: center; justify-content: center; }
-#size-indicator { background: #fff; border-radius: 50%; }
-.label-row { display: flex; justify-content: space-between; font-size: 13px; margin-top: 5px; }
-input[type=range] { width: 100%; height: 25px; accent-color: var(--accent); cursor: pointer; }
-#gallery-overlay { position: fixed; inset: 0; background: rgba(10,10,15,0.95); backdrop-filter: blur(25px); z-index: 20000; display: none; flex-direction: column; padding: 15px; }
+.floating-panel {
+  position: fixed; top: 70px; border-radius: 12px; padding: 15px; display: none; flex-direction: column; gap: 10px; z-index: 10000; width: 220px;
+}
+#context-menu {
+  position: fixed; z-index: 25000; display: none; flex-direction: column; gap: 5px; width: 160px; padding: 8px; border-radius: 10px;
+}
+
+#gallery-overlay { position: fixed; inset: 0; background: rgba(10,10,15,0.95); backdrop-filter: blur(20px); z-index: 20000; display: none; flex-direction: column; padding: 15px; }
 #gallery-content { margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; overflow-y: auto; }
+.art-card { background: #222; padding: 5px; border-radius: 6px; text-align: center; }
+.art-card img { width: 100%; height: 120px; object-fit: contain; background: #fff; }
+
+.preview-container { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; }
+#color-preview { width: 100%; height: 25px; border-radius: 4px; margin-bottom: 5px; }
+#size-indicator { background: #fff; border-radius: 50%; margin: 0 auto; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
 </style>
 </head>
 <body>
 
 <div id="top-bar" class="glass-panel">
-  <button onclick="undo()">↩️</button>
-  <button onclick="redo()">↪️</button>
-  <button onclick="toggle('tools-panel')">🛠</button>
-  <div class="size-inputs">
-    <input type="number" id="inpW" value="360" onchange="resizeCanvas()">
-    <input type="number" id="inpH" value="500" onchange="resizeCanvas()">
-  </div>
-  <button onclick="toggle('colors-panel')">🎨</button>
-  <button onclick="toggle('lang-panel')">🌐</button>
+  <button onclick="window.undoBtn()">↩️</button>
+  <button onclick="window.togglePanel('tools-panel')">🛠 Инструменты</button>
+  <button onclick="window.togglePanel('colors-panel')">🎨 Цвет</button>
   
-  <!-- Селектор FPS -->
-  <div style="display:flex; align-items:center; gap:5px;">
-    <span style="font-size:13px; font-weight:bold;">FPS:</span>
-    <select id="fps-select" class="fps-select" onchange="changeFps(this.value)">
-      <!-- Скрипт заполнит от 1 до 67 -->
-    </select>
-  </div>
-
-  <button onclick="togglePlayer()" id="btn-play" class="btn-accent">▶️ Тестить</button>
-  <button onclick="downloadVideo()" style="color:#00ff88">💾 Скачать MP4</button>
-  <button onclick="resetView()">🎯</button>
-  <button onclick="clearCanvas()" style="color:#ff4a4a">🗑</button>
+  <select id="fps-select" class="fps-select" onchange="window.changeFps(this.value)"></select>
+  <button onclick="window.togglePlayer()" id="btn-play" class="btn-accent">▶️ Тест</button>
+  <button onclick="window.downloadVideo()" style="color:#00ff88">💾 Видео</button>
+  
+  <button onclick="window.toggleGallery()" style="color:#ffae00">🌍 Глобально</button>
+  <button onclick="window.saveToCloud()" style="color:#00e5ff">☁️ В сеть</button>
+  
+  <button onclick="window.resetView()">🎯 В центр</button>
 </div>
 
-<div id="lang-panel" class="floating-panel glass-panel" style="left:50%; transform: translateX(-50%);"></div>
-
 <div id="tools-panel" class="floating-panel glass-panel" style="left:10px">
-  <button onclick="setMode('draw')" id="m-brush">✏️ Кисть</button>
-  <button onclick="setMode('erase')" id="m-erase">🧽 Ластик</button>
-  <button onclick="document.getElementById('fileIn').click()" id="m-photo">📁 Фото</button>
-  <input type="file" id="fileIn" hidden accept="image/*" onchange="handleImage(event)">
+  <button onclick="window.setMode('draw')">✏️ Кисть</button>
+  <button onclick="window.setMode('erase')">🧽 Ластик</button>
+  <button onclick="window.clearCanvas()" style="color:#ff4a4a">🗑 Очистить кадр</button>
 </div>
 
 <div id="colors-panel" class="floating-panel glass-panel" style="right:10px">
   <div class="preview-container">
     <div id="color-preview"></div>
-    <div id="size-preview-box"><div id="size-indicator"></div></div>
+    <div style="height: 60px; display:flex; align-items:center;"><div id="size-indicator"></div></div>
   </div>
-  <div class="label-row"><span id="lbl-size">Размер</span><span id="val-size">5</span></div>
-  <input type="range" id="size" min="1" max="100" value="5" oninput="updColor()">
-  <div class="label-row"><span>R</span><span id="val-r">0</span></div>
-  <input type="range" id="r" max="255" value="0" oninput="updColor()">
-  <div class="label-row"><span>G</span><span id="val-g">0</span></div>
-  <input type="range" id="g" max="255" value="0" oninput="updColor()">
-  <div class="label-row"><span>B</span><span id="val-b">0</span></div>
-  <input type="range" id="b" max="255" value="0" oninput="updColor()">
+  Размер: <span id="val-size">5</span>
+  <input type="range" id="size" min="1" max="100" value="5" oninput="window.updColor()">
+  R: <span id="val-r">0</span> <input type="range" id="r" max="255" value="0" oninput="window.updColor()">
+  G: <span id="val-g">0</span> <input type="range" id="g" max="255" value="0" oninput="window.updColor()">
+  B: <span id="val-b">0</span> <input type="range" id="b" max="255" value="0" oninput="window.updColor()">
 </div>
 
 <div id="viewport">
-  <canvas id="canvas" width="360" height="500"></canvas>
+  <canvas id="canvas" width="720" height="1280"></canvas>
 </div>
 
-<!-- Панель временной шкалы (Слои) внизу -->
+<!-- FlipaClip Таймлайн -->
 <div id="timeline-container" class="glass-panel">
-  <div id="layers-list" style="display: flex; gap: 10px; align-items: center;"></div>
-  <button id="add-layer-btn" onclick="addNewLayer()">+</button>
+  <!-- Сюда добавляются кадры через JS -->
 </div>
 
-<!-- Контекстное меню для управления слоем при зажатии -->
 <div id="context-menu" class="glass-panel">
-  <button onclick="duplicateCurrentLayer()">📑 Повторить слой</button>
-  <button onclick="deleteCurrentLayer()" style="color:#ff4a4a">🗑 Удалить слой</button>
+  <button onclick="window.duplicateFrame()">📑 Повторить</button>
+  <button onclick="window.deleteFrame()" style="color:#ff4a4a">🗑 Удалить</button>
 </div>
 
 <div id="gallery-overlay">
-  <button onclick="toggleGallery()" id="btn-close-gallery">❌ Закрыть</button>
+  <button onclick="window.toggleGallery()" style="background:#ff4a4a">❌ Закрыть галерею</button>
   <div id="gallery-content"></div>
 </div>
 
-<!-- Подключаем библиотеку для записи видео прямо в браузере (Whammy / CCapture упрощенный аналог на WebM/MP4) -->
 <script src="https://cdn.jsdelivr.net/npm/webm-writer@0.3.0/src/WebMWriter.js"></script>
 
-<script>
-const translations = {
-    "ru": { name: "Русский", brush: "✏️ Кисть", erase: "🧽 Ластик", photo: "📁 Фото", close: "❌ Закрыть", size: "Размер" },
-    "en": { name: "English", brush: "✏️ Brush", erase: "🧽 Eraser", photo: "📁 Photo", close: "❌ Close", size: "Size" }
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, doc, updateDoc, increment, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+// FIREBASE
+const firebaseConfig = {
+    apiKey: "AIzaSyCekB6vZ6qGAnvDO1LOA7OUGmA3zU1aLoA",
+    authDomain: "suno-gallery.firebaseapp.com",
+    projectId: "suno-gallery",
+    appId: "1:314284584278:web:97c5b91180562fd1c93af7"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const galleryRef = collection(db, "drawings");
+let USER_ID = localStorage.getItem("u_id") || ('u'+Math.random());
+localStorage.setItem("u_id", USER_ID);
+
+window.saveToCloud = async () => {
+    if(!confirm("Опубликовать текущий кадр в глобальную сеть?")) return;
+    try {
+        await addDoc(galleryRef, { image: frames[currentFrameIdx], date: Date.now(), reports: 0, reporters: [] });
+        alert("Опубликовано!");
+    } catch(e) { alert("Ошибка публикации"); }
 };
 
-let currentLang = 'ru';
-window.t = (key) => translations[currentLang][key] || key;
+window.loadGlobalGallery = async () => {
+    const box = document.getElementById("gallery-content");
+    box.innerHTML = "<div style='color:white'>Загрузка...</div>";
+    const snap = await getDocs(query(galleryRef, orderBy("date", "desc"), limit(20)));
+    box.innerHTML = "";
+    snap.forEach(d => {
+        const data = d.data();
+        const div = document.createElement("div");
+        div.className = "art-card";
+        div.innerHTML = `<img src="${data.image}">`;
+        box.appendChild(div);
+    });
+};
+</script>
 
+<script>
+// --- CORE VARIABLES ---
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const viewport = document.getElementById("viewport");
-const preview = document.getElementById("color-preview");
-const sizeInd = document.getElementById("size-indicator");
+const timeline = document.getElementById("timeline-container");
 
-// Переменные для анимации и слоев
-let layers = [];             // Массив строк base64 для каждого кадра
-let currentLayerIdx = 0;     // Текущий активный слой
-let fps = 12;                // По умолчанию 12 кадров в секунду
-let isPlaying = false;       // Запущен ли тест анимации
-let playerInterval = null;   // Ссылка на таймер плеера
-let playIdx = 0;             // Текущий кадр воспроизведения
+let frames = [];
+let currentFrameIdx = 0;
+let fps = 12;
+let isPlaying = false;
+let playInterval = null;
 
-let scale = 1, pX = 0, pY = 0, mode = "draw", isDrawing = false, lastX = 0, lastY = 0;
-let drawHistory = [];
-let historyStep = -1;
+// Zoom & Pan variables
+let scale = 1, pX = 0, pY = 0;
+let startScale = 1, startPinchDist = 0, startPanX = 0, startPanY = 0;
+let mode = "draw", isDrawing = false, lastX = 0, lastY = 0;
 
-// Заполнение выпадающего списка FPS от 1 до 67
-const fpsSel = document.getElementById('fps-select');
-for(let i=1; i<=67; i++) {
-    let opt = document.createElement('option');
-    opt.value = i; opt.innerText = i;
-    if(i === 12) opt.selected = true;
-    fpsSel.appendChild(opt);
-}
+let frameHistory = []; // Для отмены действий (Undo)
 
-function changeFps(val) {
-    fps = parseInt(val);
-    if(isPlaying) { stopAnim(); startAnim(); }
-}
-
-function updColor() {
-    const r = document.getElementById('r').value;
-    const g = document.getElementById('g').value;
-    const b = document.getElementById('b').value;
-    const s = document.getElementById('size').value;
-    const color = `rgb(${r},${g},${b})`;
-    preview.style.background = color;
-    sizeInd.style.background = color;
-    sizeInd.style.width = s + "px"; sizeInd.style.height = s + "px";
-    document.getElementById('val-r').innerText = r;
-    document.getElementById('val-g').innerText = g;
-    document.getElementById('val-b').innerText = b;
-    document.getElementById('val-size').innerText = s;
-}
-
-// Инициализация первого чистого слоя
-function initFirstLayer() {
+// --- INITIALIZATION ---
+window.onload = () => {
+    const fpsSel = document.getElementById('fps-select');
+    for(let i=1; i<=60; i++) {
+        let opt = document.createElement('option');
+        opt.value = i; opt.innerText = i + ' fps';
+        if(i === 12) opt.selected = true;
+        fpsSel.appendChild(opt);
+    }
+    
+    // Изначальный белый фон
     ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,canvas.width,canvas.height);
-    layers = [canvas.toDataURL()];
-    currentLayerIdx = 0;
-    updateTimeline();
-}
+    frames.push(canvas.toDataURL());
+    saveHistoryState();
+    
+    renderTimeline();
+    window.updColor();
+    window.resetView(); // Центрируем по размеру экрана
+};
 
-function saveActiveLayerState() {
-    if(isPlaying) return;
-    layers[currentLayerIdx] = canvas.toDataURL();
-    updateTimelineVisuals();
-}
-
-// Обновление всей структуры таймлайна
-function updateTimeline() {
-    const list = document.getElementById("layers-list");
-    list.innerHTML = "";
-    layers.forEach((imgData, index) => {
+// --- TIMELINE & FRAMES (FLIPACLIP STYLE) ---
+function renderTimeline() {
+    timeline.innerHTML = "";
+    frames.forEach((imgData, index) => {
         const slot = document.createElement("div");
-        slot.className = `layer-slot ${index === currentLayerIdx ? 'active' : ''}`;
-        slot.dataset.index = index;
+        slot.className = `layer-slot ${index === currentFrameIdx ? 'active' : ''}`;
+        slot.innerHTML = `<img src="${imgData}"><div class="layer-number">${index + 1}</div>`;
         
-        const img = document.createElement("img");
-        img.src = imgData;
+        slot.onclick = () => { if(!isPlaying) selectFrame(index); };
         
-        const num = document.createElement("div");
-        num.className = "layer-number";
-        num.innerText = index + 1;
-        
-        slot.appendChild(img);
-        slot.appendChild(num);
-        
-        // Обычный клик - переключение слоя
-        slot.addEventListener("click", () => {
-            if(isPlaying) return;
-            selectLayer(index);
-        });
-        
-        // Обработка долгого зажатия (длинный клик) на мобилках и ПК
+        // Долгое нажатие для контекстного меню
         let pressTimer;
-        const startPress = (e) => {
-            if(isPlaying) return;
-            pressTimer = setTimeout(() => {
-                showContextMenu(e, index);
-            }, 600);
-        };
-        const cancelPress = () => clearTimeout(pressTimer);
+        slot.ontouchstart = (e) => { if(isPlaying) return; pressTimer = setTimeout(() => showMenu(e, index), 500); };
+        slot.ontouchend = () => clearTimeout(pressTimer);
+        slot.ontouchmove = () => clearTimeout(pressTimer);
         
-        slot.addEventListener("touchstart", startPress, {passive: true});
-        slot.addEventListener("touchend", cancelPress);
-        slot.addEventListener("mousedown", startPress);
-        slot.addEventListener("mouseup", cancelPress);
-        slot.addEventListener("mouseleave", cancelPress);
-        
-        list.appendChild(slot);
-    });
-}
-
-// Быстрое обновление только миниатюр без перестройки DOM
-function updateTimelineVisuals() {
-    const slots = document.querySelectorAll(".layer-slot");
-    if(slots[currentLayerIdx]) {
-        slots[currentLayerIdx].querySelector("img").src = layers[currentLayerIdx];
-    }
-}
-
-function selectLayer(idx) {
-    saveActiveLayerState();
-    currentLayerIdx = idx;
-    
-    document.querySelectorAll(".layer-slot").forEach((s, i) => {
-        s.classList.toggle("active", i === currentLayerIdx);
+        timeline.appendChild(slot);
     });
     
-    redrawCanvasWithOnion();
+    // Кнопка добавления в конце
+    const addBtn = document.createElement("div");
+    addBtn.id = "btn-add-frame";
+    addBtn.innerText = "+";
+    addBtn.onclick = window.addNewFrame;
+    timeline.appendChild(addBtn);
 }
 
-// Отрисовка холста с эффектом кальки (Onion Skinning)
-function redrawCanvasWithOnion() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Если есть предыдущий слой — рисуем его прозрачным (эффект кальки)
-    if (currentLayerIdx > 0 && !isPlaying) {
-        const prevImg = new Image();
-        prevImg.src = layers[currentLayerIdx - 1];
-        prevImg.onload = () => {
-            ctx.save();
-            ctx.globalAlpha = 0.25; // Прозрачность кальки
-            ctx.drawImage(prevImg, 0, 0);
-            ctx.restore();
-            
-            // Затем поверх накатываем текущий рабочий кадр
-            drawCurrentOnTop();
-        };
-    } else {
-        drawCurrentOnTop();
-    }
+function selectFrame(idx) {
+    frames[currentFrameIdx] = canvas.toDataURL(); // Сохраняем текущий перед переходом
+    currentFrameIdx = idx;
+    frameHistory = [frames[currentFrameIdx]]; // Сброс истории для нового кадра
+    renderTimeline();
+    drawCanvasWithOnion();
 }
 
-function drawCurrentOnTop() {
-    const currImg = new Image();
-    currImg.src = layers[currentLayerIdx];
-    currImg.onload = () => {
-        ctx.drawImage(currImg, 0, 0);
-    };
-}
-
-function addNewLayer() {
+window.addNewFrame = () => {
     if(isPlaying) return;
-    saveActiveLayerState();
+    frames[currentFrameIdx] = canvas.toDataURL();
     
-    // Создаем чистый белый холст для нового кадра
     const tempCanvas = document.createElement("canvas");
     tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
     const tCtx = tempCanvas.getContext("2d");
     tCtx.fillStyle = "#ffffff"; tCtx.fillRect(0,0,canvas.width,canvas.height);
     
-    layers.splice(currentLayerIdx + 1, 0, tempCanvas.toDataURL());
-    currentLayerIdx++;
-    updateTimeline();
-    redrawCanvasWithOnion();
+    frames.splice(currentFrameIdx + 1, 0, tempCanvas.toDataURL());
+    currentFrameIdx++;
+    renderTimeline();
+    drawCanvasWithOnion();
+    saveHistoryState();
+};
+
+function drawCanvasWithOnion() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    if (currentFrameIdx > 0 && !isPlaying) {
+        const prevImg = new Image();
+        prevImg.src = frames[currentFrameIdx - 1];
+        prevImg.onload = () => {
+            ctx.globalAlpha = 0.3; // Калька
+            ctx.drawImage(prevImg, 0, 0);
+            ctx.globalAlpha = 1.0;
+            drawCurrentFrame();
+        };
+    } else {
+        drawCurrentFrame();
+    }
 }
 
-// Контекстное меню
-let selectedMenuLayerIdx = 0;
-function showContextMenu(e) {
+function drawCurrentFrame() {
+    const img = new Image();
+    img.src = frames[currentFrameIdx];
+    img.onload = () => ctx.drawImage(img, 0, 0);
+}
+
+// --- HISTORY (UNDO) ---
+function saveHistoryState() {
+    frameHistory.push(canvas.toDataURL());
+    if(frameHistory.length > 15) frameHistory.shift();
+    updateCurrentThumbnail();
+}
+window.undoBtn = () => {
+    if(frameHistory.length > 1) {
+        frameHistory.pop(); // удаляем текущее состояние
+        const img = new Image();
+        img.src = frameHistory[frameHistory.length - 1];
+        img.onload = () => {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.drawImage(img, 0, 0);
+            frames[currentFrameIdx] = canvas.toDataURL();
+            updateCurrentThumbnail();
+            drawCanvasWithOnion(); // перерисовываем с калькой
+        };
+    }
+};
+
+function updateCurrentThumbnail() {
+    frames[currentFrameIdx] = canvas.toDataURL();
+    const activeSlot = timeline.querySelector('.layer-slot.active img');
+    if(activeSlot) activeSlot.src = frames[currentFrameIdx];
+}
+
+// --- CONTEXT MENU ---
+let menuTargetIdx = 0;
+function showMenu(e, idx) {
     e.preventDefault();
+    menuTargetIdx = idx;
     const touch = e.touches ? e.touches[0] : e;
     const menu = document.getElementById("context-menu");
     menu.style.display = "flex";
-    menu.style.left = `${Math.min(touch.clientX, window.innerWidth - 160)}px`;
-    menu.style.top = `${Math.min(touch.clientY, window.innerHeight - 100)}px`;
-    
-    const slot = e.target.closest('.layer-slot');
-    selectedMenuLayerIdx = parseInt(slot.dataset.index);
+    menu.style.left = `${Math.min(touch.clientX, window.innerWidth - 170)}px`;
+    menu.style.top = `${Math.min(touch.clientY, window.innerHeight - 150)}px`;
 }
-
 window.addEventListener("click", (e) => {
-    if(!e.target.closest('#context-menu')) {
+    if(!e.target.closest('.layer-slot') && !e.target.closest('#context-menu')) {
         document.getElementById("context-menu").style.display = "none";
     }
 });
 
-function duplicateCurrentLayer() {
-    layers.splice(selectedMenuLayerIdx + 1, 0, layers[selectedMenuLayerIdx]);
-    currentLayerIdx = selectedMenuLayerIdx + 1;
+window.duplicateFrame = () => {
+    frames.splice(menuTargetIdx + 1, 0, frames[menuTargetIdx]);
+    currentFrameIdx = menuTargetIdx + 1;
     document.getElementById("context-menu").style.display = "none";
-    updateTimeline();
-    redrawCanvasWithOnion();
-}
+    renderTimeline(); drawCanvasWithOnion(); saveHistoryState();
+};
 
-function deleteCurrentLayer() {
-    if(layers.length <= 1) { alert("Нельзя удалить единственный слой!"); return; }
-    layers.splice(selectedMenuLayerIdx, 1);
-    currentLayerIdx = Math.max(0, selectedMenuLayerIdx - 1);
+window.deleteFrame = () => {
+    if(frames.length <= 1) { alert("Последний кадр!"); return; }
+    frames.splice(menuTargetIdx, 1);
+    currentFrameIdx = Math.max(0, menuTargetIdx - 1);
     document.getElementById("context-menu").style.display = "none";
-    updateTimeline();
-    redrawCanvasWithOnion();
-}
+    renderTimeline(); drawCanvasWithOnion(); saveHistoryState();
+};
 
-// Функция ТЕСТИРОВАНИЯ анимации по выбранному FPS
-function togglePlayer() {
-    if(isPlaying) { stopAnim(); } else { startAnim(); }
-}
-
-function startAnim() {
-    saveActiveLayerState();
-    isPlaying = true;
-    document.getElementById("btn-play").innerText = "⏹️ Стоп";
-    playIdx = 0;
-    
-    playerInterval = setInterval(() => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const img = new Image();
-        img.src = layers[playIdx];
-        img.onload = () => { ctx.drawImage(img, 0, 0); };
-        
-        // Подсвечиваем кадр на таймлайне во время проигрывания
-        document.querySelectorAll(".layer-slot").forEach((s, idx) => {
-            s.classList.toggle("active", idx === playIdx);
-        });
-        
-        playIdx = (playIdx + 1) % layers.length;
-    }, 1000 / fps);
-}
-
-function stopAnim() {
-    isPlaying = false;
-    clearInterval(playerInterval);
-    document.getElementById("btn-play").innerText = "▶️ Тестить";
-    selectLayer(currentLayerIdx);
-}
-
-// Сборка и скачивание в видео-формате (WebM, читается как стандартное видео на телефонах)
-function downloadVideo() {
-    saveActiveLayerState();
-    stopAnim();
-    
-    // Используем кодировщик кадров WebMWriter (чистый фронтенд экспорт)
-    const videoWriter = new WebMWriter({
-        quality: 0.95,
-        fileWriter: null,
-        fd: null,
-        frameRate: fps
-    });
-    
-    let processFrame = (idx) => {
-        if(idx >= layers.length) {
-            const blob = videoWriter.complete();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = 'animation.mp4'; // Маскируем под mp4 для лучшей совместимости систем
-            a.click();
-            return;
-        }
-        
-        const img = new Image();
-        img.src = layers[idx];
-        img.onload = () => {
-            ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,canvas.width,canvas.height);
-            ctx.drawImage(img, 0, 0);
-            videoWriter.addFrame(canvas);
-            processFrame(idx + 1);
-        };
-    };
-    
-    alert("Начался экспорт видео, подождите завершения...");
-    processFrame(0);
-}
-
-// Стандартные инструменты рисования и вьюпорта
-function toggle(id) {
-    const el = document.getElementById(id);
-    const isVisible = el.style.display === 'flex';
-    document.querySelectorAll('.floating-panel').forEach(p => p.style.display = 'none');
-    el.style.display = isVisible ? 'none' : 'flex';
-}
-
-function setMode(m) { mode = m; toggle('tools-panel'); }
-
-function clearCanvas() { 
-    if(!confirm("Очистить текущий слой?")) return;
-    ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,canvas.width,canvas.height); 
-    saveActiveLayerState();
-}
-
-function resizeCanvas() {
-    const w = document.getElementById('inpW').value, h = document.getElementById('inpH').value;
-    canvas.width = w; canvas.height = h;
-    initFirstLayer();
-    resetView();
-}
-
-function handleImage(e) {
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-        const img = new Image();
-        img.onload = () => { ctx.drawImage(img, 0, 0, canvas.width, canvas.height); saveActiveLayerState(); };
-        img.src = ev.target.result;
-    };
-    reader.readAsDataURL(e.target.files[0]);
-}
-
-function resetView() {
-    scale = Math.min(viewport.clientWidth / canvas.width, viewport.clientHeight / canvas.height) * 0.85;
-    pX = (viewport.clientWidth - canvas.width * scale) / 2; pY = (viewport.clientHeight - canvas.height * scale) / 2;
+// --- ZOOM & PAN (TWO FINGERS) & DRAWING ---
+window.resetView = () => {
+    const cw = viewport.clientWidth, ch = viewport.clientHeight;
+    // Вписываем канвас в экран
+    scale = Math.min(cw / canvas.width, ch / canvas.height) * 0.9;
+    pX = (cw - canvas.width * scale) / 2;
+    pY = (ch - canvas.height * scale) / 2;
     updateTransform();
-}
+};
 
-function updateTransform() { canvas.style.transform = `translate(${pX}px, ${pY}px) scale(${scale})`; }
+function updateTransform() {
+    canvas.style.transform = `translate(${pX}px, ${pY}px) scale(${scale})`;
+}
 
 function getPos(e) {
     const rect = viewport.getBoundingClientRect();
     const t = e.touches ? e.touches[0] : e;
-    return { x: (t.clientX - rect.left - pX) / scale, y: (t.clientY - rect.top - pY) / scale };
+    return { 
+        x: (t.clientX - rect.left - pX) / scale, 
+        y: (t.clientY - rect.top - pY) / scale 
+    };
 }
 
-// Слушатели рисования на холсте
 viewport.addEventListener('touchstart', e => {
     if(isPlaying) return;
     if(e.touches.length === 2) {
         isDrawing = false;
-    } else {
+        // Настройка для зума/панорамирования
+        startPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+        startScale = scale;
+        startPanX = (e.touches[0].clientX + e.touches[1].clientX)/2 - pX;
+        startPanY = (e.touches[0].clientY + e.touches[1].clientY)/2 - pY;
+    } else if(e.touches.length === 1) {
         isDrawing = true;
         const p = getPos(e); lastX = p.x; lastY = p.y;
+        drawPoint(p.x, p.y);
     }
-}, {passive: true});
+}, {passive: false});
 
 viewport.addEventListener('touchmove', e => {
     if(isPlaying) return;
-    if(isDrawing && e.touches.length === 1) {
+    e.preventDefault(); // Останавливаем скролл страницы
+    if(e.touches.length === 2) {
+        const currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+        scale = startScale * (currentDist / startPinchDist);
+        pX = (e.touches[0].clientX + e.touches[1].clientX)/2 - startPanX;
+        pY = (e.touches[0].clientY + e.touches[1].clientY)/2 - startPanY;
+        updateTransform();
+    } else if(isDrawing && e.touches.length === 1) {
         const p = getPos(e);
-        ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y);
-        ctx.lineCap = "round"; ctx.lineWidth = document.getElementById('size').value;
-        ctx.strokeStyle = (mode === 'erase') ? '#ffffff' : preview.style.background;
-        ctx.stroke(); lastX = p.x; lastY = p.y;
+        drawLine(lastX, lastY, p.x, p.y);
+        lastX = p.x; lastY = p.y;
     }
-}, {passive: true});
+}, {passive: false});
 
-w
+window.addEventListener('touchend', e => { 
+    if(isDrawing && e.touches.length === 0) {
+        saveHistoryState(); 
+        isDrawing = false; 
+    }
+});
+
+function drawPoint(x, y) {
+    ctx.beginPath(); ctx.arc(x, y, document.getElementById('size').value / 2, 0, Math.PI * 2);
+    ctx.fillStyle = mode === 'erase' ? '#ffffff' : document.getElementById('color-preview').style.backgroundColor;
+    ctx.fill();
+}
+function drawLine(x1, y1, x2, y2) {
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.lineWidth = document.getElementById('size').value;
+    ctx.strokeStyle = mode === 'erase' ? '#ffffff' : document.getElementById('color-preview').style.backgroundColor;
+    ctx.stroke();
+}
+
+// --- PLAYER & EXPORT ---
+window.changeFps = (val) => { fps = parseInt(val); if(isPlaying){ window.togglePlayer(); window.togglePlayer(); }};
+
+window.togglePlayer = () => {
+    if(isPlaying) {
+        isPlaying = false; clearInterval(playInterval);
+        document.getElementById("btn-play").innerHTML = "▶️ Тест";
+        selectFrame(currentFrameIdx); // Возвращаем интерфейс
+    } else {
+        frames[currentFrameIdx] = canvas.toDataURL(); // Сохраняем текущий
+        isPlaying = true; document.getElementById("btn-play").innerHTML = "⏹️ Стоп";
+        let playIdx = 0;
+        playInterval = setInterval(() => {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            const img = new Image(); img.src = frames[playIdx];
+            img.onload = () => ctx.drawImage(img, 0, 0);
+            
+            document.querySelectorAll(".layer-slot").forEach((s, i) => s.classList.toggle("active", i === playIdx));
+            playIdx = (playIdx + 1) % frames.length;
+        }, 1000 / fps);
+    }
+};
+
+window.downloadVideo = () => {
+    if(isPlaying) window.togglePlayer();
+    frames[currentFrameIdx] = canvas.toDataURL();
+    
+    const videoWriter = new WebMWriter({ quality: 0.95, frameRate: fps });
+    let idx = 0;
+    const processFrame = () => {
+        if(idx >= frames.length) {
+            const blob = videoWriter.complete();
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob); a.download = 'flipaclip_export.mp4'; a.click();
+            return;
+        }
+        const img = new Image(); img.src = frames[idx];
+        img.onload = () => {
+            ctx.fillStyle="#fff"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0);
+            videoWriter.addFrame(canvas); idx++; processFrame();
+        };
+    };
+    alert("Генерация видео началась...");
+    processFrame();
+};
+
+// --- UI HELPERS ---
+window.togglePanel = (id) => {
+    const el = document.getElementById(id);
+    const isVis = el.style.display === 'flex';
+    document.querySelectorAll('.floating-panel').forEach(p => p.style.display = 'none');
+    el.style.display = isVis ? 'none' : 'flex';
+};
+window.setMode = (m) => { mode = m; window.togglePanel('tools-panel'); };
+window.clearCanvas = () => { ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,canvas.width,canvas.height); saveHistoryState(); window.togglePanel('tools-panel'); };
+
+window.toggleGallery = () => {
+    const g = document.getElementById("gallery-overlay");
+    if(g.style.display === 'flex') { g.style.display = 'none'; }
+    else { g.style.display = 'flex'; window.loadGlobalGallery(); }
+};
+
+window.updColor = () => {
+    const r = document.getElementById('r').value, g = document.getElementById('g').value, b = document.getElementById('b').value, s = document.getElementById('size').value;
+    const col = `rgb(${r},${g},${b})`;
+    document.getElementById('color-preview').style.backgroundColor = col;
+    const si = document.getElementById('size-indicator');
+    si.style.backgroundColor = col; si.style.width = s+"px"; si.style.height = s+"px";
+    document.getElementById('val-r').innerText = r; document.getElementById('val-g').innerText = g; document.getElementById('val-b').inn
