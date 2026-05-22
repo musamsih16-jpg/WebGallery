@@ -1,461 +1,716 @@
-<!-- ВСТАВЬ ЭТО ПЕРЕД </body> -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  orderBy,
+  limit
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-<input type="file" id="imgLoader" accept="image/*" hidden>
+const firebaseConfig = {
+  apiKey: "AIzaSyC933HHhEYGUqXkM8ajaIi8ktm9NhMaeVA",
+  authDomain: "suno-gallery.firebaseapp.com",
+  projectId: "suno-gallery",
+  storageBucket: "suno-gallery.firebasestorage.app",
+  messagingSenderId: "314284584278",
+  appId: "1:314284584278:web:97c5b91180562fd1c93af7"
+};
 
-<script>
-/* =========================
-   SUNO PRO FINAL FIX PACK
-========================= */
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const galleryRef = collection(db, "drawings");
 
-// ---------- ХОЛСТ ----------
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const viewport = document.getElementById("viewport");
+const timeline = document.getElementById("timeline-container");
+const topBar = document.getElementById("top-bar");
+const toolsPanel = document.getElementById("tools-panel");
+const galleryOverlay = document.getElementById("gallery-overlay");
+const galleryContent = document.getElementById("gallery-content");
+const contextMenu = document.getElementById("context-menu");
+const fpsSelect = document.getElementById("fps-select");
+const btnPlay = document.getElementById("btn-play");
+
 canvas.width = 528;
 canvas.height = 358;
+canvas.style.transformOrigin = "0 0";
+viewport.style.touchAction = "none";
+document.body.style.touchAction = "none";
 
-// ---------- ЧЁРНАЯ ТЕМА ----------
-document.documentElement.style.setProperty("--bg-gradient","linear-gradient(135deg,#050505,#111827)");
-document.documentElement.style.setProperty("--glass-bg","rgba(20,20,20,0.55)");
-document.documentElement.style.setProperty("--glass-border","rgba(255,255,255,0.12)");
-document.documentElement.style.setProperty("--text-color","#ffffff");
-document.documentElement.style.setProperty("--accent","#00aaff");
-document.documentElement.style.setProperty("--accent-glow","rgba(0,170,255,0.4)");
+let USER_ID = localStorage.getItem("u_id");
+if (!USER_ID) {
+  USER_ID = "u" + Math.random().toString(36).slice(2);
+  localStorage.setItem("u_id", USER_ID);
+}
 
-document.body.style.background = "linear-gradient(135deg,#050505,#111827)";
+let frames = [];
+let currentFrameIdx = 0;
+let fps = 12;
+let isPlaying = false;
+let playInterval = null;
 
-// ---------- LIQUID GLASS ----------
-document.querySelectorAll("button").forEach(btn=>{
-  btn.style.backdropFilter = "blur(18px)";
-  btn.style.webkitBackdropFilter = "blur(18px)";
-  btn.style.background = "rgba(255,255,255,0.08)";
-  btn.style.border = "1px solid rgba(255,255,255,0.12)";
-  btn.style.boxShadow = "0 4px 20px rgba(0,0,0,0.35)";
-});
+let scale = 1;
+let pX = 0;
+let pY = 0;
 
-// ---------- VIEW ----------
+let pointers = new Map();
+let pinchStartDistance = 0;
+let pinchStartScale = 1;
+let pinchStartPan = { x: 0, y: 0 };
+let drawingPointerId = null;
+let lastX = 0;
+let lastY = 0;
+let mode = "draw";
+
+let menuTargetIdx = 0;
+let themeVariant = Number(localStorage.getItem("suno_theme_variant") || "0");
+
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function applyTheme() {
+  const themes = [
+    {
+      bg: "linear-gradient(135deg, #050505 0%, #0f172a 100%)",
+      glass: "rgba(255,255,255,0.06)",
+      border: "rgba(255,255,255,0.12)",
+      text: "#f8fafc",
+      accent: "#00aaff",
+      glow: "rgba(0,170,255,0.35)",
+      panel: "#121622",
+      overlay: "rgba(10,10,15,0.95)"
+    },
+    {
+      bg: "linear-gradient(135deg, #050505 0%, #111827 100%)",
+      glass: "rgba(255,255,255,0.08)",
+      border: "rgba(255,255,255,0.14)",
+      text: "#f8fafc",
+      accent: "#2dd4ff",
+      glow: "rgba(45,212,255,0.30)",
+      panel: "#151a29",
+      overlay: "rgba(8,8,12,0.96)"
+    },
+    {
+      bg: "linear-gradient(135deg, #020202 0%, #10172a 100%)",
+      glass: "rgba(255,255,255,0.05)",
+      border: "rgba(255,255,255,0.10)",
+      text: "#f8fafc",
+      accent: "#60a5fa",
+      glow: "rgba(96,165,250,0.28)",
+      panel: "#10141f",
+      overlay: "rgba(6,6,9,0.97)"
+    }
+  ];
+
+  const t = themes[themeVariant % themes.length];
+
+  const root = document.documentElement;
+  root.style.setProperty("--bg-gradient", t.bg);
+  root.style.setProperty("--glass-bg", t.glass);
+  root.style.setProperty("--glass-border", t.border);
+  root.style.setProperty("--text-color", t.text);
+  root.style.setProperty("--accent", t.accent);
+  root.style.setProperty("--accent-glow", t.glow);
+
+  document.body.style.background = t.bg;
+  document.body.style.color = t.text;
+
+  if (topBar) topBar.style.background = t.glass;
+  if (toolsPanel) toolsPanel.style.background = t.glass;
+  if (contextMenu) contextMenu.style.background = t.glass;
+  if (galleryOverlay) galleryOverlay.style.background = t.overlay;
+  if (timeline) timeline.style.background = t.panel;
+
+  document.querySelectorAll("button, select, input[type='range']").forEach(el => {
+    el.style.backdropFilter = "blur(18px)";
+    el.style.webkitBackdropFilter = "blur(18px)";
+    if (el.tagName === "BUTTON" || el.tagName === "SELECT") {
+      el.style.background = "rgba(255,255,255,0.08)";
+      el.style.border = "1px solid rgba(255,255,255,0.12)";
+      el.style.color = "var(--text-color)";
+      el.style.boxShadow = "0 4px 20px rgba(0,0,0,0.35)";
+    }
+  });
+}
+
+window.toggleTheme = () => {
+  themeVariant = (themeVariant + 1) % 3;
+  localStorage.setItem("suno_theme_variant", String(themeVariant));
+  applyTheme();
+};
+
+applyTheme();
+
+const state = {
+  color: { h: 0, s: 0, v: 0 },
+  brightness: 1
+};
+
+function hsvToRgb(h, s, v) {
+  let c = v * s;
+  let x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  let m = v - c;
+  let r1 = 0, g1 = 0, b1 = 0;
+
+  if (h >= 0 && h < 60) { r1 = c; g1 = x; b1 = 0; }
+  else if (h < 120) { r1 = x; g1 = c; b1 = 0; }
+  else if (h < 180) { r1 = 0; g1 = c; b1 = x; }
+  else if (h < 240) { r1 = 0; g1 = x; b1 = c; }
+  else if (h < 300) { r1 = x; g1 = 0; b1 = c; }
+  else { r1 = c; g1 = 0; b1 = x; }
+
+  return {
+    r: Math.round((r1 + m) * 255),
+    g: Math.round((g1 + m) * 255),
+    b: Math.round((b1 + m) * 255)
+  };
+}
+
+function rgbToHsv(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const d = max - min;
+  let h = 0;
+  const s = max === 0 ? 0 : d / max;
+  const v = max;
+
+  if (d !== 0) {
+    switch (max) {
+      case r: h = 60 * (((g - b) / d) % 6); break;
+      case g: h = 60 * (((b - r) / d) + 2); break;
+      case b: h = 60 * (((r - g) / d) + 4); break;
+    }
+  }
+
+  if (h < 0) h += 360;
+  return { h, s, v };
+}
+
+function getPaintColor() {
+  if (mode === "erase") return "#ffffff";
+  const rgb = hsvToRgb(
+    state.color.h,
+    state.color.s,
+    state.color.v * state.brightness
+  );
+  return `rgb(${rgb.r},${rgb.g},${rgb.b})`;
+}
+
+function updateColorPreview() {
+  const rgb = hsvToRgb(
+    state.color.h,
+    state.color.s,
+    state.color.v * state.brightness
+  );
+
+  document.getElementById("r").value = rgb.r;
+  document.getElementById("g").value = rgb.g;
+  document.getElementById("b").value = rgb.b;
+
+  document.getElementById("val-r").innerText = rgb.r;
+  document.getElementById("val-g").innerText = rgb.g;
+  document.getElementById("val-b").innerText = rgb.b;
+  document.getElementById("val-size").innerText = document.getElementById("size").value;
+
+  const col = `rgb(${rgb.r},${rgb.g},${rgb.b})`;
+  document.getElementById("color-preview").style.background = col;
+
+  const sizeInd = document.getElementById("size-indicator");
+  const s = Number(document.getElementById("size").value);
+  sizeInd.style.width = `${s}px`;
+  sizeInd.style.height = `${s}px`;
+  sizeInd.style.background = col;
+}
+
+function setColorFromRgb(r, g, b) {
+  const hsv = rgbToHsv(r, g, b);
+  state.color.h = hsv.h;
+  state.color.s = hsv.s;
+  state.color.v = 1;
+  state.brightness = clamp(hsv.v, 0.05, 1);
+  brightnessRange.value = String(Math.round(state.brightness * 100));
+  updateColorPreview();
+}
+
+window.updColor = () => {
+  const r = Number(document.getElementById("r").value);
+  const g = Number(document.getElementById("g").value);
+  const b = Number(document.getElementById("b").value);
+  const hsv = rgbToHsv(r, g, b);
+  state.color.h = hsv.h;
+  state.color.s = hsv.s;
+  state.color.v = 1;
+  state.brightness = clamp(hsv.v, 0.05, 1);
+  brightnessRange.value = String(Math.round(state.brightness * 100));
+  updateColorPreview();
+};
+
+function createFrame(image, history = null) {
+  return {
+    image,
+    history: history ? [...history] : [image]
+  };
+}
+
+function commitCurrentFrame(pushHistory = true) {
+  if (!frames[currentFrameIdx]) return;
+  const data = canvas.toDataURL();
+  frames[currentFrameIdx].image = data;
+  if (pushHistory) {
+    const hist = frames[currentFrameIdx].history;
+    if (hist[hist.length - 1] !== data) {
+      hist.push(data);
+      if (hist.length > 25) hist.shift();
+    }
+  }
+  updateTimelineThumb(currentFrameIdx);
+}
+
+function updateTimelineThumb(idx) {
+  const slot = timeline.querySelectorAll(".layer-slot img")[idx];
+  if (slot && frames[idx]) slot.src = frames[idx].image;
+}
+
+function loadImageToCanvas(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve();
+    };
+    img.src = dataUrl;
+  });
+}
+
+function updateTransform() {
+  canvas.style.transform = `translate(${pX}px, ${pY}px) scale(${scale})`;
+}
+
 window.resetView = () => {
   const cw = viewport.clientWidth;
   const ch = viewport.clientHeight;
-
   scale = Math.min(cw / canvas.width, ch / canvas.height) * 0.95;
-
   pX = (cw - canvas.width * scale) / 2;
   pY = (ch - canvas.height * scale) / 2;
-
   updateTransform();
 };
 
-window.addEventListener("resize", window.resetView);
+function screenToCanvas(clientX, clientY) {
+  const rect = viewport.getBoundingClientRect();
+  return {
+    x: (clientX - rect.left - pX) / scale,
+    y: (clientY - rect.top - pY) / scale
+  };
+}
 
-// ---------- MULTI TOUCH ZOOM ----------
-let pinchStartDistance = 0;
-let pinchStartScaleValue = 1;
-
-viewport.addEventListener("touchstart", e => {
-
-  if(e.touches.length === 2){
-
-    const dx =
-      e.touches[0].clientX -
-      e.touches[1].clientX;
-
-    const dy =
-      e.touches[0].clientY -
-      e.touches[1].clientY;
-
-    pinchStartDistance = Math.hypot(dx,dy);
-    pinchStartScaleValue = scale;
+function saveHistoryState() {
+  if (!frames[currentFrameIdx]) return;
+  const data = canvas.toDataURL();
+  const hist = frames[currentFrameIdx].history;
+  if (hist[hist.length - 1] !== data) {
+    hist.push(data);
+    if (hist.length > 25) hist.shift();
   }
+  frames[currentFrameIdx].image = data;
+  updateTimelineThumb(currentFrameIdx);
+}
 
-},{passive:false});
+function refreshCanvasFromCurrentFrame() {
+  if (!frames[currentFrameIdx]) return;
+  loadImageToCanvas(frames[currentFrameIdx].image);
+}
 
-viewport.addEventListener("touchmove", e => {
+function drawPoint(x, y) {
+  const size = Number(document.getElementById("size").value);
+  ctx.beginPath();
+  ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+  ctx.fillStyle = getPaintColor();
+  ctx.fill();
+}
 
-  if(e.touches.length === 2){
+function drawLine(x1, y1, x2, y2) {
+  const size = Number(document.getElementById("size").value);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.lineWidth = size;
+  ctx.strokeStyle = getPaintColor();
+  ctx.stroke();
+}
 
-    e.preventDefault();
+function renderTimeline() {
+  timeline.innerHTML = "";
 
-    const dx =
-      e.touches[0].clientX -
-      e.touches[1].clientX;
+  frames.forEach((frame, index) => {
+    const slot = document.createElement("div");
+    slot.className = `layer-slot ${index === currentFrameIdx ? "active" : ""}`;
+    slot.innerHTML = `<img src="${frame.image}" alt="frame ${index + 1}"><div class="layer-number">${index + 1}</div>`;
 
-    const dy =
-      e.touches[0].clientY -
-      e.touches[1].clientY;
+    slot.addEventListener("click", () => {
+      if (!isPlaying) selectFrame(index);
+    });
 
-    const dist = Math.hypot(dx,dy);
+    let pressTimer = null;
+    slot.addEventListener("pointerdown", (e) => {
+      if (isPlaying) return;
+      pressTimer = setTimeout(() => showMenu(e, index), 500);
+    });
+    slot.addEventListener("pointerup", () => clearTimeout(pressTimer));
+    slot.addEventListener("pointerleave", () => clearTimeout(pressTimer));
+    slot.addEventListener("pointercancel", () => clearTimeout(pressTimer));
+    slot.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      showMenu(e, index);
+    });
 
-    scale =
-      pinchStartScaleValue *
-      (dist / pinchStartDistance);
-
-    scale = Math.max(0.3,Math.min(scale,8));
-
-    updateTransform();
-  }
-
-},{passive:false});
-
-// ---------- РАБОЧИЕ КНОПКИ ----------
-window.togglePanel = (id) => {
-
-  document.querySelectorAll(".floating-panel")
-  .forEach(el=>{
-
-    if(el.id !== id){
-      el.style.display = "none";
-    }
-
+    timeline.appendChild(slot);
   });
 
-  const panel = document.getElementById(id);
+  const addBtn = document.createElement("div");
+  addBtn.id = "btn-add-frame";
+  addBtn.textContent = "+";
+  addBtn.addEventListener("click", () => window.addNewFrame());
+  timeline.appendChild(addBtn);
+}
 
-  panel.style.display =
-    panel.style.display === "flex"
-    ? "none"
-    : "flex";
+function selectFrame(idx) {
+  commitCurrentFrame(false);
+  currentFrameIdx = idx;
+  renderTimeline();
+  loadImageToCanvas(frames[currentFrameIdx].image);
+}
+
+window.addNewFrame = () => {
+  if (isPlaying) return;
+  commitCurrentFrame(false);
+
+  const blank = document.createElement("canvas");
+  blank.width = canvas.width;
+  blank.height = canvas.height;
+  const bctx = blank.getContext("2d");
+  bctx.fillStyle = "#ffffff";
+  bctx.fillRect(0, 0, blank.width, blank.height);
+
+  const newFrame = createFrame(blank.toDataURL());
+
+  frames.splice(currentFrameIdx + 1, 0, newFrame);
+  currentFrameIdx += 1;
+
+  renderTimeline();
+  loadImageToCanvas(frames[currentFrameIdx].image);
 };
 
-window.setMode = (m)=>{
+window.prevFrame = () => {
+  if (!frames.length) return;
+  if (currentFrameIdx > 0) {
+    commitCurrentFrame(false);
+    currentFrameIdx -= 1;
+    renderTimeline();
+    refreshCanvasFromCurrentFrame();
+  }
+};
+
+window.nextFrame = () => {
+  if (!frames.length) return;
+  if (currentFrameIdx < frames.length - 1) {
+    commitCurrentFrame(false);
+    currentFrameIdx += 1;
+    renderTimeline();
+    refreshCanvasFromCurrentFrame();
+  }
+};
+
+window.undoBtn = () => {
+  const frame = frames[currentFrameIdx];
+  if (!frame || frame.history.length <= 1) return;
+
+  frame.history.pop();
+  const prev = frame.history[frame.history.length - 1];
+  frame.image = prev;
+  loadImageToCanvas(prev);
+  updateTimelineThumb(currentFrameIdx);
+};
+
+function showMenu(e, idx) {
+  e.preventDefault();
+  menuTargetIdx = idx;
+  const menu = contextMenu;
+  const x = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+  const y = e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+
+  menu.style.display = "flex";
+  menu.style.left = `${Math.min(x, window.innerWidth - 170)}px`;
+  menu.style.top = `${Math.min(y, window.innerHeight - 150)}px`;
+}
+
+window.duplicateFrame = () => {
+  if (!frames[menuTargetIdx]) return;
+  const src = frames[menuTargetIdx];
+  const dup = createFrame(src.image, src.history);
+  frames.splice(menuTargetIdx + 1, 0, dup);
+  currentFrameIdx = menuTargetIdx + 1;
+  contextMenu.style.display = "none";
+  renderTimeline();
+  refreshCanvasFromCurrentFrame();
+};
+
+window.deleteFrame = () => {
+  if (frames.length <= 1) {
+    alert("Последний кадр!");
+    return;
+  }
+  frames.splice(menuTargetIdx, 1);
+  currentFrameIdx = clamp(menuTargetIdx - 1, 0, frames.length - 1);
+  contextMenu.style.display = "none";
+  renderTimeline();
+  refreshCanvasFromCurrentFrame();
+};
+
+window.togglePanel = (id) => {
+  const el = document.getElementById(id);
+  const isVisible = el.style.display === "flex";
+  document.querySelectorAll(".floating-panel").forEach(p => {
+    if (p.id !== id) p.style.display = "none";
+  });
+  el.style.display = isVisible ? "none" : "flex";
+};
+
+window.setMode = (m) => {
   mode = m;
+  window.togglePanel("tools-panel");
 };
 
-window.clearCanvas = ()=>{
-
+window.clearCanvas = () => {
   ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   saveHistoryState();
-  saveCurrentFrame();
+  renderTimeline();
 };
 
-window.changeFps = (v)=>{
-  fps = parseInt(v);
-
-  if(isPlaying){
-    clearInterval(playInterval);
+window.changeFps = (v) => {
+  fps = clamp(parseInt(v, 10) || 12, 1, 60);
+  if (isPlaying) {
     window.togglePlayer();
     window.togglePlayer();
   }
 };
 
-// ---------- FPS ----------
-document.getElementById("fps-select").value = "12";
-
-// ---------- PLAYER ----------
-window.togglePlayer = ()=>{
-
-  if(isPlaying){
-
-    clearInterval(playInterval);
+window.togglePlayer = () => {
+  if (isPlaying) {
     isPlaying = false;
-
-    document.getElementById("btn-play").innerText = "▶️ Тест";
-
-    loadImageToCanvas(frames[currentFrameIdx]);
-
+    clearInterval(playInterval);
+    btnPlay.innerText = "▶️ Тест";
+    refreshCanvasFromCurrentFrame();
+    renderTimeline();
     return;
   }
 
+  commitCurrentFrame(false);
   isPlaying = true;
-
-  document.getElementById("btn-play").innerText = "⏹️ Стоп";
+  btnPlay.innerText = "⏹️ Стоп";
 
   let i = 0;
-
-  playInterval = setInterval(()=>{
-
+  playInterval = setInterval(() => {
     const img = new Image();
-
-    img.onload = ()=>{
-
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      ctx.drawImage(img,0,0);
-
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     };
+    img.src = frames[i].image;
 
-    img.src = frames[i];
+    renderTimeline();
+    const active = timeline.querySelectorAll(".layer-slot");
+    active.forEach((s, idx) => s.classList.toggle("active", idx === i));
 
-    i++;
-
-    if(i >= frames.length){
-      i = 0;
-    }
-
-  },1000/fps);
+    i = (i + 1) % frames.length;
+  }, 1000 / fps);
 };
 
-// ---------- КРУГ ЦВЕТА КАК В IBIS ----------
-const colorPanel = document.getElementById("tools-panel");
+window.downloadVideo = () => {
+  if (isPlaying) window.togglePlayer();
+  commitCurrentFrame(false);
 
-const wheel = document.createElement("canvas");
-wheel.width = 220;
-wheel.height = 220;
-wheel.style.borderRadius = "50%";
-wheel.style.cursor = "crosshair";
-
-colorPanel.appendChild(wheel);
-
-const wctx = wheel.getContext("2d");
-
-const radius = 110;
-const image = wctx.createImageData(220,220);
-
-for(let y=-radius;y<radius;y++){
-  for(let x=-radius;x<radius;x++){
-
-    const d = Math.sqrt(x*x+y*y);
-
-    if(d <= radius){
-
-      const angle = Math.atan2(y,x);
-      const hue = (angle+Math.PI)/(Math.PI*2)*360;
-      const sat = d/radius;
-
-      const rgb = hsvToRgb(hue,sat,1);
-
-      const index =
-        ((y+radius)*220 + (x+radius))*4;
-
-      image.data[index] = rgb.r;
-      image.data[index+1] = rgb.g;
-      image.data[index+2] = rgb.b;
-      image.data[index+3] = 255;
-    }
-  }
-}
-
-wctx.putImageData(image,0,0);
-
-function hsvToRgb(h,s,v){
-
-  let f=(n,k=(n+h/60)%6)=>
-  v-v*s*Math.max(Math.min(k,4-k,1),0);
-
-  return {
-    r: Math.round(f(5)*255),
-    g: Math.round(f(3)*255),
-    b: Math.round(f(1)*255)
-  };
-}
-
-wheel.addEventListener("pointerdown",e=>{
-
-  const rect = wheel.getBoundingClientRect();
-
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-
-  const pixel = wctx.getImageData(x,y,1,1).data;
-
-  document.getElementById("r").value = pixel[0];
-  document.getElementById("g").value = pixel[1];
-  document.getElementById("b").value = pixel[2];
-
-  window.updColor();
-});
-
-// ---------- ЯРКОСТЬ ----------
-const bright = document.createElement("input");
-
-bright.type = "range";
-bright.min = 0;
-bright.max = 100;
-bright.value = 100;
-
-colorPanel.appendChild(bright);
-
-bright.oninput = ()=>{
-
-  const mul = bright.value / 100;
-
-  let r = parseInt(document.getElementById("r").value);
-  let g = parseInt(document.getElementById("g").value);
-  let b = parseInt(document.getElementById("b").value);
-
-  r = Math.floor(r*mul);
-  g = Math.floor(g*mul);
-  b = Math.floor(b*mul);
-
-  document.getElementById("color-preview")
-  .style.background =
-  `rgb(${r},${g},${b})`;
-};
-
-// ---------- RGB ----------
-window.updColor = ()=>{
-
-  const r = document.getElementById("r").value;
-  const g = document.getElementById("g").value;
-  const b = document.getElementById("b").value;
-  const s = document.getElementById("size").value;
-
-  document.getElementById("val-r").innerText = r;
-  document.getElementById("val-g").innerText = g;
-  document.getElementById("val-b").innerText = b;
-  document.getElementById("val-size").innerText = s;
-
-  const col = `rgb(${r},${g},${b})`;
-
-  document.getElementById("color-preview")
-  .style.background = col;
-
-  const sizeInd =
-    document.getElementById("size-indicator");
-
-  sizeInd.style.width = s+"px";
-  sizeInd.style.height = s+"px";
-  sizeInd.style.background = col;
-};
-
-// ---------- ЗАГРУЗКА ИЗОБРАЖЕНИЯ ----------
-const uploadBtn = document.createElement("button");
-
-uploadBtn.innerText = "🖼️ Загрузить";
-
-document.getElementById("top-bar")
-.appendChild(uploadBtn);
-
-uploadBtn.onclick = ()=>{
-  document.getElementById("imgLoader").click();
-};
-
-document.getElementById("imgLoader")
-.addEventListener("change",e=>{
-
-  const file = e.target.files[0];
-
-  if(!file) return;
-
-  const reader = new FileReader();
-
-  reader.onload = ev=>{
-
-    const img = new Image();
-
-    img.onload = ()=>{
-
-      ctx.drawImage(
-        img,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      );
-
-      saveHistoryState();
-      saveCurrentFrame();
-    };
-
-    img.src = ev.target.result;
-  };
-
-  reader.readAsDataURL(file);
-});
-
-// ---------- ГАЛЕРЕЯ ----------
-window.toggleGallery = async ()=>{
-
-  const g =
-    document.getElementById("gallery-overlay");
-
-  if(g.style.display === "flex"){
-
-    g.style.display = "none";
+  const Writer = window.WebMWriter;
+  if (typeof Writer !== "function") {
+    alert("WebMWriter не загрузился");
     return;
   }
 
-  g.style.display = "flex";
+  const videoWriter = new Writer({
+    quality: 0.95,
+    frameRate: fps
+  });
 
+  let idx = 0;
+
+  const processFrame = () => {
+    if (idx >= frames.length) {
+      const blob = videoWriter.complete();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "suno_animation.webm";
+      a.click();
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      videoWriter.addFrame(canvas);
+      idx++;
+      processFrame();
+    };
+    img.src = frames[idx].image;
+  };
+
+  alert("Генерация видео началась...");
+  processFrame();
+};
+
+window.toggleGallery = async () => {
+  if (galleryOverlay.style.display === "flex") {
+    galleryOverlay.style.display = "none";
+    return;
+  }
+  galleryOverlay.style.display = "flex";
   await window.loadGlobalGallery();
 };
 
-window.loadGlobalGallery = async ()=>{
-
-  const box =
-    document.getElementById("gallery-content");
-
-  box.innerHTML = "<h2>Загрузка...</h2>";
-
-  try{
-
-    const snap = await getDocs(
-      query(
-        galleryRef,
-        orderBy("date","desc"),
-        limit(40)
-      )
-    );
-
-    box.innerHTML = "";
-
-    snap.forEach(docu=>{
-
-      const data = docu.data();
-
-      const div = document.createElement("div");
-
-      div.className = "art-card";
-
-      div.innerHTML =
-      `
-      <img src="${data.image}">
-      `;
-
-      div.onclick = async ()=>{
-
-        frames.push(data.image);
-
-        currentFrameIdx = frames.length-1;
-
-        renderTimeline();
-
-        await loadImageToCanvas(data.image);
-      };
-
-      box.appendChild(div);
-
-    });
-
-  }catch(err){
-
-    console.error(err);
-
-    box.innerHTML =
-    "<h2>Ошибка Firebase</h2>";
-  }
+window.insertImageAsFrame = async (dataUrl) => {
+  const frame = createFrame(dataUrl);
+  frames.splice(currentFrameIdx + 1, 0, frame);
+  currentFrameIdx += 1;
+  renderTimeline();
+  await loadImageToCanvas(dataUrl);
 };
 
-// ---------- СОХРАНЕНИЕ ----------
-window.saveToCloud = async ()=>{
-
-  try{
-
-    saveCurrentFrame();
-
-    await addDoc(galleryRef,{
-      image: frames[currentFrameIdx],
-      date: Date.now()
+window.saveToCloud = async () => {
+  try {
+    commitCurrentFrame(false);
+    await addDoc(galleryRef, {
+      image: frames[currentFrameIdx].image,
+      date: Date.now(),
+      userId: USER_ID
     });
-
     alert("Сохранено в глобал 🌍");
-
-  }catch(e){
-
-    console.error(e);
-
+    await window.loadGlobalGallery();
+  } catch (e) {
+    console.error("saveToCloud error:", e);
     alert("Ошибка Firebase");
   }
 };
 
-// ---------- СЛОИ FLIPACLIP ----------
-timeline.style.height = "85px";
+window.loadGlobalGallery = async () => {
+  galleryContent.innerHTML = "<h2 style='color:white'>Загрузка...</h2>";
 
-document.querySelectorAll(".layer-slot")
-.forEach(el=>{
+  try {
+    const snap = await getDocs(query(galleryRef, orderBy("date", "desc"), limit(40)));
+    galleryContent.innerHTML = "";
 
-  el.style.height = "65px";
-  el.style.minWidth = "65px";
+    if (snap.empty) {
+      galleryContent.innerHTML = "<h2 style='color:white'>Пока пусто</h2>";
+      return;
+    }
+
+    snap.forEach(docu => {
+      const data = docu.data();
+      const div = document.createElement("div");
+      div.className = "art-card";
+      div.innerHTML = `<img src="${data.image}" alt="drawing">`;
+      div.addEventListener("click", async () => {
+        await window.insertImageAsFrame(data.image);
+      });
+      galleryContent.appendChild(div);
+    });
+  } catch (err) {
+    console.error(err);
+    galleryContent.innerHTML = "<h2 style='color:#ff8080'>Ошибка Firebase</h2>";
+  }
+};
+
+window.addEventListener("click", (e) => {
+  if (!e.target.closest("#context-menu") && !e.target.closest(".layer-slot")) {
+    contextMenu.style.display = "none";
+  }
 });
 
-// ---------- ВКЛ ----------
-window.resetView();
-</script>
+window.addEventListener("resize", () => {
+  window.resetView();
+});
+
+viewport.addEventListener("pointerdown", (e) => {
+  if (isPlaying) return;
+  viewport.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (pointers.size === 1) {
+    drawingPointerId = e.pointerId;
+    const p = screenToCanvas(e.clientX, e.clientY);
+    lastX = p.x;
+    lastY = p.y;
+    drawPoint(p.x, p.y);
+  }
+
+  if (pointers.size === 2) {
+    drawingPointerId = null;
+    const arr = [...pointers.values()];
+    pinchStartDistance = Math.hypot(arr[0].x - arr[1].x, arr[0].y - arr[1].y);
+    pinchStartScale = scale;
+    pinchStartPan = { x: pX, y: pY };
+  }
+}, { passive: false });
+
+viewport.addEventListener("pointermove", (e) => {
+  if (isPlaying) return;
+  if (!pointers.has(e.pointerId)) return;
+
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (pointers.size === 2) {
+    const arr = [...pointers.values()];
+    const centerX = (arr[0].x + arr[1].x) / 2;
+    const centerY = (arr[0].y + arr[1].y) / 2;
+    const dist = Math.hypot(arr[0].x - arr[1].x, arr[0].y - arr[1].y);
+
+    const rect = viewport.getBoundingClientRect();
+    const cx = centerX - rect.left;
+    const cy = centerY - rect.top;
+
+    const newScale = pinchStartScale * (dist / pinchStartDistance);
+    scale = clamp(newScale, 0.2, 8);
+
+    pX = cx - ((cx - pinchStartPan.x) * (scale / pinchStartScale));
+    pY = cy - ((cy - pinchStartPan.y) * (scale / pinchStartScale));
+    updateTransform();
+    return;
+  }
+
+  if (pointers.size === 1 && drawingPointerId === e.pointerId) {
+    const p = screenToCanvas(e.clientX, e.clientY);
+    drawLine(lastX, lastY, p.x, p.y);
+    lastX = p.x;
+    lastY = p.y;
+  }
+}, { passive: false });
+
+function endPointer(e) {
+  if (pointers.has(e.pointerId)) pointers.delete(e.pointerId);
+
+  if (pointers.size === 0 && drawingPointerId !== null) {
+    saveHistoryState();
+    commitCurrentFrame(true);
+    drawingPointerId 
