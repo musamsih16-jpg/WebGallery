@@ -1,644 +1,461 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Галерея Суно - Аниматор</title>
-  
-  <script src="https://cdn.jsdelivr.net/npm/webm-writer@0.3.0/webm-writer.min.js"></script>
+<!-- ВСТАВЬ ЭТО ПЕРЕД </body> -->
 
-  <style>
-    /* БАЗОВЫЕ СТИЛИ (Темы управляются скриптом) */
-    :root {
-      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-      --glass-bg: rgba(255, 255, 255, 0.06);
-      --glass-border: rgba(255, 255, 255, 0.10);
-      --text-color: #f8fafc;
-      --accent: #008cff;
-      --accent-glow: rgba(0, 140, 255, 0.4);
+<input type="file" id="imgLoader" accept="image/*" hidden>
+
+<script>
+/* =========================
+   SUNO PRO FINAL FIX PACK
+========================= */
+
+// ---------- ХОЛСТ ----------
+canvas.width = 528;
+canvas.height = 358;
+
+// ---------- ЧЁРНАЯ ТЕМА ----------
+document.documentElement.style.setProperty("--bg-gradient","linear-gradient(135deg,#050505,#111827)");
+document.documentElement.style.setProperty("--glass-bg","rgba(20,20,20,0.55)");
+document.documentElement.style.setProperty("--glass-border","rgba(255,255,255,0.12)");
+document.documentElement.style.setProperty("--text-color","#ffffff");
+document.documentElement.style.setProperty("--accent","#00aaff");
+document.documentElement.style.setProperty("--accent-glow","rgba(0,170,255,0.4)");
+
+document.body.style.background = "linear-gradient(135deg,#050505,#111827)";
+
+// ---------- LIQUID GLASS ----------
+document.querySelectorAll("button").forEach(btn=>{
+  btn.style.backdropFilter = "blur(18px)";
+  btn.style.webkitBackdropFilter = "blur(18px)";
+  btn.style.background = "rgba(255,255,255,0.08)";
+  btn.style.border = "1px solid rgba(255,255,255,0.12)";
+  btn.style.boxShadow = "0 4px 20px rgba(0,0,0,0.35)";
+});
+
+// ---------- VIEW ----------
+window.resetView = () => {
+  const cw = viewport.clientWidth;
+  const ch = viewport.clientHeight;
+
+  scale = Math.min(cw / canvas.width, ch / canvas.height) * 0.95;
+
+  pX = (cw - canvas.width * scale) / 2;
+  pY = (ch - canvas.height * scale) / 2;
+
+  updateTransform();
+};
+
+window.addEventListener("resize", window.resetView);
+
+// ---------- MULTI TOUCH ZOOM ----------
+let pinchStartDistance = 0;
+let pinchStartScaleValue = 1;
+
+viewport.addEventListener("touchstart", e => {
+
+  if(e.touches.length === 2){
+
+    const dx =
+      e.touches[0].clientX -
+      e.touches[1].clientX;
+
+    const dy =
+      e.touches[0].clientY -
+      e.touches[1].clientY;
+
+    pinchStartDistance = Math.hypot(dx,dy);
+    pinchStartScaleValue = scale;
+  }
+
+},{passive:false});
+
+viewport.addEventListener("touchmove", e => {
+
+  if(e.touches.length === 2){
+
+    e.preventDefault();
+
+    const dx =
+      e.touches[0].clientX -
+      e.touches[1].clientX;
+
+    const dy =
+      e.touches[0].clientY -
+      e.touches[1].clientY;
+
+    const dist = Math.hypot(dx,dy);
+
+    scale =
+      pinchStartScaleValue *
+      (dist / pinchStartDistance);
+
+    scale = Math.max(0.3,Math.min(scale,8));
+
+    updateTransform();
+  }
+
+},{passive:false});
+
+// ---------- РАБОЧИЕ КНОПКИ ----------
+window.togglePanel = (id) => {
+
+  document.querySelectorAll(".floating-panel")
+  .forEach(el=>{
+
+    if(el.id !== id){
+      el.style.display = "none";
     }
 
-    body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background: var(--bg-gradient);
-      color: var(--text-color);
-      font-family: system-ui, -apple-system, sans-serif;
-      touch-action: none;
-    }
+  });
 
-    /* ВЕРХНЯЯ ПАНЕЛЬ И КНОПКИ */
-    #top-bar {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      right: 10px;
-      height: 50px;
-      background: var(--glass-bg);
-      border: 1px solid var(--glass-border);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      padding: 0 10px;
-      gap: 8px;
-      backdrop-filter: blur(10px);
-      z-index: 100;
-      overflow-x: auto;
-    }
+  const panel = document.getElementById(id);
 
-    button {
-      background: var(--glass-bg);
-      border: 1px solid var(--glass-border);
-      color: var(--text-color);
-      padding: 8px 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
+  panel.style.display =
+    panel.style.display === "flex"
+    ? "none"
+    : "flex";
+};
 
-    button:active {
-      transform: scale(0.95);
-      background: var(--accent);
-    }
+window.setMode = (m)=>{
+  mode = m;
+};
 
-    /* РАБОЧАЯ ОБЛАСТЬ (ХОЛСТ) */
-    #viewport {
-      position: absolute;
-      top: 70px;
-      left: 0;
-      right: 0;
-      bottom: 80px;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+window.clearCanvas = ()=>{
 
-    canvas {
-      background: #ffffff;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-      transform-origin: 0 0;
-    }
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    /* ПАНЕЛЬ ИНСТРУМЕНТОВ (ПЛАВАЮЩАЯ) */
-    .floating-panel {
-      position: absolute;
-      top: 70px;
-      left: 10px;
-      background: var(--glass-bg);
-      border: 1px solid var(--glass-border);
-      padding: 15px;
-      border-radius: 12px;
-      display: none;
-      flex-direction: column;
-      gap: 10px;
-      backdrop-filter: blur(10px);
-      z-index: 100;
-    }
+  saveHistoryState();
+  saveCurrentFrame();
+};
 
-    /* ТАЙМЛАЙН (НИЖНЯЯ ПАНЕЛЬ) */
-    #timeline-container {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 70px;
-      background: #1a1a24;
-      display: flex;
-      align-items: center;
-      padding: 0 10px;
-      gap: 10px;
-      overflow-x: auto;
-      z-index: 100;
-    }
+window.changeFps = (v)=>{
+  fps = parseInt(v);
 
-    .layer-slot {
-      min-width: 50px;
-      height: 50px;
-      background: #fff;
-      border-radius: 8px;
-      border: 2px solid transparent;
-      overflow: hidden;
-      position: relative;
-      cursor: pointer;
-      flex-shrink: 0;
-    }
+  if(isPlaying){
+    clearInterval(playInterval);
+    window.togglePlayer();
+    window.togglePlayer();
+  }
+};
 
-    .layer-slot.active {
-      border-color: var(--accent);
-      box-shadow: 0 0 10px var(--accent-glow);
-    }
+// ---------- FPS ----------
+document.getElementById("fps-select").value = "12";
 
-    .layer-slot img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
+// ---------- PLAYER ----------
+window.togglePlayer = ()=>{
 
-    .layer-number {
-      position: absolute;
-      bottom: 2px;
-      right: 4px;
-      font-size: 10px;
-      color: #000;
-      font-weight: bold;
-      text-shadow: 1px 1px 0 #fff;
-    }
+  if(isPlaying){
 
-    #btn-add-frame {
-      min-width: 50px;
-      height: 50px;
-      background: var(--glass-bg);
-      border: 2px dashed var(--glass-border);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      cursor: pointer;
-      flex-shrink: 0;
-    }
+    clearInterval(playInterval);
+    isPlaying = false;
 
-    /* КОНТЕКСТНОЕ МЕНЮ */
-    #context-menu {
-      position: absolute;
-      background: var(--glass-bg);
-      border: 1px solid var(--glass-border);
-      border-radius: 8px;
-      padding: 5px;
-      display: none;
-      flex-direction: column;
-      gap: 5px;
-      backdrop-filter: blur(10px);
-      z-index: 200;
-    }
+    document.getElementById("btn-play").innerText = "▶️ Тест";
 
-    #context-menu button {
-      border: none;
-      text-align: left;
-      padding: 10px;
-    }
+    loadImageToCanvas(frames[currentFrameIdx]);
 
-    /* ГАЛЕРЕЯ (ОВЕРЛЕЙ) */
-    #gallery-overlay {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(10,10,15,0.95);
-      z-index: 300;
-      display: none;
-      flex-direction: column;
-      padding: 20px;
-    }
+    return;
+  }
 
-    #gallery-content {
-      flex: 1;
-      overflow-y: auto;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 15px;
-      margin-top: 20px;
-    }
+  isPlaying = true;
 
-    .art-card img {
-      width: 150px;
-      height: 150px;
-      object-fit: cover;
-      border-radius: 8px;
-      border: 1px solid var(--glass-border);
-    }
-  </style>
-</head>
-<body>
+  document.getElementById("btn-play").innerText = "⏹️ Стоп";
 
-  <div id="top-bar">
-    <button onclick="window.togglePanel('tools-panel')">🎨 Инструменты</button>
-    <button onclick="window.undoBtn()">↩️ Назад</button>
-    <button onclick="window.saveToCloud()">☁️ В галерею</button>
-    <button onclick="window.toggleGallery()">🖼️ Галерея</button>
-    <button id="btn-play" onclick="window.togglePlayer()">▶️ Тест</button>
-    <select id="fps-select" onchange="window.changeFps(this.value)" style="background:var(--glass-bg); color:var(--text-color); border:1px solid var(--glass-border); border-radius:8px; padding:8px; outline:none;"></select>
-    <button onclick="window.downloadVideo()">💾 Видео</button>
-    <button onclick="window.prevFrame()">⬅️</button>
-    <button onclick="window.nextFrame()">➡️</button>
-    <button onclick="window.toggleTheme()">🌙/☀️</button>
-  </div>
+  let i = 0;
 
-  <div id="tools-panel" class="floating-panel">
-    <div style="display:flex; gap:10px;">
-      <button onclick="window.setMode('draw')">✏️ Кисть</button>
-      <button onclick="window.setMode('erase')">🧽 Ластик</button>
-    </div>
-    <label>Размер: <span id="val-size">5</span></label>
-    <input type="range" id="size" min="1" max="50" value="5" oninput="window.updColor()">
-    
-    <label>Красный: <span id="val-r">0</span></label>
-    <input type="range" id="r" min="0" max="255" value="0" oninput="window.updColor()">
-    <label>Зеленый: <span id="val-g">0</span></label>
-    <input type="range" id="g" min="0" max="255" value="0" oninput="window.updColor()">
-    <label>Синий: <span id="val-b">0</span></label>
-    <input type="range" id="b" min="0" max="255" value="0" oninput="window.updColor()">
-    
-    <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
-      <div id="color-preview" style="width:30px; height:30px; border-radius:50%; background:#000; border:2px solid #fff;"></div>
-      <div id="size-indicator" style="border-radius:50%; background:#000;"></div>
-    </div>
-    
-    <button onclick="window.clearCanvas()" style="margin-top:10px; background:#ff4444;">🗑️ Очистить холст</button>
-  </div>
+  playInterval = setInterval(()=>{
 
-  <div id="viewport">
-    <canvas id="canvas" width="1080" height="1920"></canvas>
-  </div>
+    const img = new Image();
 
-  <div id="timeline-container"></div>
+    img.onload = ()=>{
 
-  <div id="context-menu">
-    <button onclick="window.duplicateFrame()">📋 Дублировать</button>
-    <button onclick="window.deleteFrame()" style="color:#ff4444;">🗑️ Удалить</button>
-  </div>
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img,0,0);
 
-  <div id="gallery-overlay">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <h2>Глобальная галерея</h2>
-      <button onclick="window.toggleGallery()">❌ Закрыть</button>
-    </div>
-    <div id="gallery-content"></div>
-  </div>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import {
-      getFirestore,
-      collection,
-      addDoc,
-      getDocs,
-      query,
-      orderBy,
-      limit
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-    // ---------------- FIREBASE ----------------
-    const firebaseConfig = {
-      apiKey: "AIzaSyC933HHhEYGUqXkM8ajaIi8ktm9NhMaeVA",
-      authDomain: "suno-gallery.firebaseapp.com",
-      projectId: "suno-gallery",
-      storageBucket: "suno-gallery.firebasestorage.app",
-      messagingSenderId: "314284584278",
-      appId: "1:314284584278:web:97c5b91180562fd1c93af7"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const galleryRef = collection(db, "drawings");
+    img.src = frames[i];
 
-    let USER_ID = localStorage.getItem("u_id");
-    if (!USER_ID) {
-      USER_ID = "u" + Math.random().toString(36).slice(2);
-      localStorage.setItem("u_id", USER_ID);
+    i++;
+
+    if(i >= frames.length){
+      i = 0;
     }
 
-    // ---------------- CORE ----------------
-    const canvas = document.getElementById("canvas");
-    const ctx = canvas.getContext("2d");
-    const viewport = document.getElementById("viewport");
-    const timeline = document.getElementById("timeline-container");
+  },1000/fps);
+};
 
-    viewport.style.touchAction = "none";
+// ---------- КРУГ ЦВЕТА КАК В IBIS ----------
+const colorPanel = document.getElementById("tools-panel");
 
-    let frames = [];
-    let currentFrameIdx = 0;
-    let fps = 12;
-    let isPlaying = false;
-    let playInterval = null;
+const wheel = document.createElement("canvas");
+wheel.width = 220;
+wheel.height = 220;
+wheel.style.borderRadius = "50%";
+wheel.style.cursor = "crosshair";
 
-    let scale = 1;
-    let pX = 0;
-    let pY = 0;
+colorPanel.appendChild(wheel);
 
-    let pointers = new Map();
-    let pinchStartDist = 0;
-    let pinchStartScale = 1;
-    let pinchStartPan = { x: 0, y: 0 };
-    let drawingPointerId = null;
+const wctx = wheel.getContext("2d");
 
-    let lastX = 0;
-    let lastY = 0;
-    let mode = "draw";
+const radius = 110;
+const image = wctx.createImageData(220,220);
 
-    let frameHistory = [];
-    let menuTargetIdx = 0;
+for(let y=-radius;y<radius;y++){
+  for(let x=-radius;x<radius;x++){
 
-    let themeName = localStorage.getItem("suno_theme") || "dark";
+    const d = Math.sqrt(x*x+y*y);
 
-    // ---------------- THEME ----------------
-    function applyTheme(name) {
-      const root = document.documentElement;
-      const topBar = document.getElementById("top-bar");
-      const galleryOverlay = document.getElementById("gallery-overlay");
-      const timelineEl = document.getElementById("timeline-container");
-      const contextMenu = document.getElementById("context-menu");
+    if(d <= radius){
 
-      if (name === "light") {
-        root.style.setProperty("--bg-gradient", "linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)");
-        root.style.setProperty("--glass-bg", "rgba(255, 255, 255, 0.68)");
-        root.style.setProperty("--glass-border", "rgba(0, 0, 0, 0.10)");
-        root.style.setProperty("--text-color", "#0f172a");
-        root.style.setProperty("--accent", "#0077ff");
-        root.style.setProperty("--accent-glow", "rgba(0, 119, 255, 0.28)");
+      const angle = Math.atan2(y,x);
+      const hue = (angle+Math.PI)/(Math.PI*2)*360;
+      const sat = d/radius;
 
-        document.body.style.background = "var(--bg-gradient)";
-        document.body.style.color = "var(--text-color)";
-        if (topBar) topBar.style.background = "var(--glass-bg)";
-        if (timelineEl) timelineEl.style.background = "#e5e7eb";
-        if (galleryOverlay) galleryOverlay.style.background = "rgba(245, 245, 245, 0.96)";
-        if (contextMenu) contextMenu.style.background = "var(--glass-bg)";
-      } else {
-        root.style.setProperty("--bg-gradient", "linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)");
-        root.style.setProperty("--glass-bg", "rgba(255, 255, 255, 0.06)");
-        root.style.setProperty("--glass-border", "rgba(255, 255, 255, 0.10)");
-        root.style.setProperty("--text-color", "#f8fafc");
-        root.style.setProperty("--accent", "#008cff");
-        root.style.setProperty("--accent-glow", "rgba(0, 140, 255, 0.4)");
+      const rgb = hsvToRgb(hue,sat,1);
 
-        document.body.style.background = "var(--bg-gradient)";
-        document.body.style.color = "var(--text-color)";
-        if (topBar) topBar.style.background = "var(--glass-bg)";
-        if (timelineEl) timelineEl.style.background = "#1a1a24";
-        if (galleryOverlay) galleryOverlay.style.background = "rgba(10,10,15,0.95)";
-        if (contextMenu) contextMenu.style.background = "var(--glass-bg)";
-      }
+      const index =
+        ((y+radius)*220 + (x+radius))*4;
+
+      image.data[index] = rgb.r;
+      image.data[index+1] = rgb.g;
+      image.data[index+2] = rgb.b;
+      image.data[index+3] = 255;
     }
+  }
+}
 
-    window.toggleTheme = () => {
-      themeName = themeName === "dark" ? "light" : "dark";
-      localStorage.setItem("suno_theme", themeName);
-      applyTheme(themeName);
+wctx.putImageData(image,0,0);
+
+function hsvToRgb(h,s,v){
+
+  let f=(n,k=(n+h/60)%6)=>
+  v-v*s*Math.max(Math.min(k,4-k,1),0);
+
+  return {
+    r: Math.round(f(5)*255),
+    g: Math.round(f(3)*255),
+    b: Math.round(f(1)*255)
+  };
+}
+
+wheel.addEventListener("pointerdown",e=>{
+
+  const rect = wheel.getBoundingClientRect();
+
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  const pixel = wctx.getImageData(x,y,1,1).data;
+
+  document.getElementById("r").value = pixel[0];
+  document.getElementById("g").value = pixel[1];
+  document.getElementById("b").value = pixel[2];
+
+  window.updColor();
+});
+
+// ---------- ЯРКОСТЬ ----------
+const bright = document.createElement("input");
+
+bright.type = "range";
+bright.min = 0;
+bright.max = 100;
+bright.value = 100;
+
+colorPanel.appendChild(bright);
+
+bright.oninput = ()=>{
+
+  const mul = bright.value / 100;
+
+  let r = parseInt(document.getElementById("r").value);
+  let g = parseInt(document.getElementById("g").value);
+  let b = parseInt(document.getElementById("b").value);
+
+  r = Math.floor(r*mul);
+  g = Math.floor(g*mul);
+  b = Math.floor(b*mul);
+
+  document.getElementById("color-preview")
+  .style.background =
+  `rgb(${r},${g},${b})`;
+};
+
+// ---------- RGB ----------
+window.updColor = ()=>{
+
+  const r = document.getElementById("r").value;
+  const g = document.getElementById("g").value;
+  const b = document.getElementById("b").value;
+  const s = document.getElementById("size").value;
+
+  document.getElementById("val-r").innerText = r;
+  document.getElementById("val-g").innerText = g;
+  document.getElementById("val-b").innerText = b;
+  document.getElementById("val-size").innerText = s;
+
+  const col = `rgb(${r},${g},${b})`;
+
+  document.getElementById("color-preview")
+  .style.background = col;
+
+  const sizeInd =
+    document.getElementById("size-indicator");
+
+  sizeInd.style.width = s+"px";
+  sizeInd.style.height = s+"px";
+  sizeInd.style.background = col;
+};
+
+// ---------- ЗАГРУЗКА ИЗОБРАЖЕНИЯ ----------
+const uploadBtn = document.createElement("button");
+
+uploadBtn.innerText = "🖼️ Загрузить";
+
+document.getElementById("top-bar")
+.appendChild(uploadBtn);
+
+uploadBtn.onclick = ()=>{
+  document.getElementById("imgLoader").click();
+};
+
+document.getElementById("imgLoader")
+.addEventListener("change",e=>{
+
+  const file = e.target.files[0];
+
+  if(!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = ev=>{
+
+    const img = new Image();
+
+    img.onload = ()=>{
+
+      ctx.drawImage(
+        img,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      saveHistoryState();
+      saveCurrentFrame();
     };
 
-    applyTheme(themeName);
+    img.src = ev.target.result;
+  };
 
-    // ---------------- INIT ----------------
-    window.addEventListener("load", () => {
-      const fpsSel = document.getElementById("fps-select");
-      fpsSel.innerHTML = "";
+  reader.readAsDataURL(file);
+});
 
-      for (let i = 1; i <= 60; i++) {
-        const opt = document.createElement("option");
-        opt.value = i;
-        opt.textContent = `${i} fps`;
-        if (i === 12) opt.selected = true;
-        fpsSel.appendChild(opt);
-      }
+// ---------- ГАЛЕРЕЯ ----------
+window.toggleGallery = async ()=>{
 
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const g =
+    document.getElementById("gallery-overlay");
 
-      frames = [canvas.toDataURL()];
-      currentFrameIdx = 0;
-      frameHistory = [frames[0]];
+  if(g.style.display === "flex"){
 
-      window.updColor();
-      renderTimeline();
-      window.resetView();
-      loadImageToCanvas(frames[0]);
-    });
+    g.style.display = "none";
+    return;
+  }
 
-    // ---------------- HELPERS ----------------
-    function clamp(v, min, max) {
-      return Math.max(min, Math.min(max, v));
-    }
+  g.style.display = "flex";
 
-    function updateTransform() {
-      canvas.style.transform = `translate(${pX}px, ${pY}px) scale(${scale})`;
-    }
+  await window.loadGlobalGallery();
+};
 
-    function screenToCanvas(clientX, clientY) {
-      const rect = viewport.getBoundingClientRect();
-      return {
-        x: (clientX - rect.left - pX) / scale,
-        y: (clientY - rect.top - pY) / scale
-      };
-    }
+window.loadGlobalGallery = async ()=>{
 
-    function saveCurrentFrame() {
-      frames[currentFrameIdx] = canvas.toDataURL();
-      const activeSlot = timeline.querySelector(".layer-slot.active img");
-      if (activeSlot) activeSlot.src = frames[currentFrameIdx];
-    }
+  const box =
+    document.getElementById("gallery-content");
 
-    function loadImageToCanvas(dataUrl) {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0);
-          resolve();
-        };
-        img.src = dataUrl;
-      });
-    }
+  box.innerHTML = "<h2>Загрузка...</h2>";
 
-    function refreshCurrentPreview() {
-      saveCurrentFrame();
-      const activeSlot = timeline.querySelector(".layer-slot.active img");
-      if (activeSlot) activeSlot.src = frames[currentFrameIdx];
-    }
+  try{
 
-    // ---------------- TIMELINE ----------------
-    function renderTimeline() {
-      timeline.innerHTML = "";
+    const snap = await getDocs(
+      query(
+        galleryRef,
+        orderBy("date","desc"),
+        limit(40)
+      )
+    );
 
-      frames.forEach((imgData, index) => {
-        const slot = document.createElement("div");
-        slot.className = `layer-slot ${index === currentFrameIdx ? "active" : ""}`;
-        slot.innerHTML = `<img src="${imgData}" alt="frame ${index + 1}"><div class="layer-number">${index + 1}</div>`;
+    box.innerHTML = "";
 
-        slot.addEventListener("click", () => {
-          if (!isPlaying) selectFrame(index);
-        });
+    snap.forEach(docu=>{
 
-        let pressTimer = null;
+      const data = docu.data();
 
-        slot.addEventListener("pointerdown", (e) => {
-          if (isPlaying) return;
-          pressTimer = setTimeout(() => showMenu(e, index), 500);
-        });
+      const div = document.createElement("div");
 
-        slot.addEventListener("pointerup", () => clearTimeout(pressTimer));
-        slot.addEventListener("pointerleave", () => clearTimeout(pressTimer));
-        slot.addEventListener("pointercancel", () => clearTimeout(pressTimer));
-        slot.addEventListener("contextmenu", (e) => {
-          e.preventDefault();
-          showMenu(e, index);
-        });
+      div.className = "art-card";
 
-        timeline.appendChild(slot);
-      });
+      div.innerHTML =
+      `
+      <img src="${data.image}">
+      `;
 
-      const addBtn = document.createElement("div");
-      addBtn.id = "btn-add-frame";
-      addBtn.textContent = "+";
-      addBtn.addEventListener("click", window.addNewFrame);
-      timeline.appendChild(addBtn);
-    }
+      div.onclick = async ()=>{
 
-    function selectFrame(idx) {
-      saveCurrentFrame();
-      currentFrameIdx = idx;
-      frameHistory = [frames[currentFrameIdx]];
-      renderTimeline();
-      loadImageToCanvas(frames[currentFrameIdx]);
-    }
+        frames.push(data.image);
 
-    window.addNewFrame = () => {
-      if (isPlaying) return;
+        currentFrameIdx = frames.length-1;
 
-      saveCurrentFrame();
-
-      const blank = document.createElement("canvas");
-      blank.width = canvas.width;
-      blank.height = canvas.height;
-      const bctx = blank.getContext("2d");
-      bctx.fillStyle = "#ffffff";
-      bctx.fillRect(0, 0, blank.width, blank.height);
-
-      frames.splice(currentFrameIdx + 1, 0, blank.toDataURL());
-      currentFrameIdx++;
-      frameHistory = [frames[currentFrameIdx]];
-      renderTimeline();
-      loadImageToCanvas(frames[currentFrameIdx]);
-    };
-
-    // ---------------- HISTORY ----------------
-    function saveHistoryState() {
-      frameHistory.push(canvas.toDataURL());
-      if (frameHistory.length > 20) frameHistory.shift();
-    }
-
-    window.undoBtn = () => {
-      if (frameHistory.length <= 1) return;
-
-      frameHistory.pop();
-      const prev = frameHistory[frameHistory.length - 1];
-      loadImageToCanvas(prev).then(() => {
-        frames[currentFrameIdx] = canvas.toDataURL();
         renderTimeline();
-      });
-    };
 
-    // ---------------- CONTEXT MENU ----------------
-    function showMenu(e, idx) {
-      e.preventDefault();
-      menuTargetIdx = idx;
-      const menu = document.getElementById("context-menu");
-      const x = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
-      const y = e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+        await loadImageToCanvas(data.image);
+      };
 
-      menu.style.display = "flex";
-      menu.style.left = `${Math.min(x, window.innerWidth - 170)}px`;
-      menu.style.top = `${Math.min(y, window.innerHeight - 150)}px`;
-    }
+      box.appendChild(div);
 
-    window.addEventListener("click", (e) => {
-      if (!e.target.closest(".layer-slot") && !e.target.closest("#context-menu")) {
-        const menu = document.getElementById("context-menu");
-        if (menu) menu.style.display = "none";
-      }
     });
 
-    window.duplicateFrame = () => {
-      frames.splice(menuTargetIdx + 1, 0, frames[menuTargetIdx]);
-      currentFrameIdx = menuTargetIdx + 1;
-      document.getElementById("context-menu").style.display = "none";
-      renderTimeline();
-      loadImageToCanvas(frames[currentFrameIdx]);
-      saveHistoryState();
-    };
+  }catch(err){
 
-    window.deleteFrame = () => {
-      if (frames.length <= 1) {
-        alert("Последний кадр!");
-        return;
-      }
+    console.error(err);
 
-      frames.splice(menuTargetIdx, 1);
-      currentFrameIdx = clamp(menuTargetIdx - 1, 0, frames.length - 1);
-      document.getElementById("context-menu").style.display = "none";
-      renderTimeline();
-      loadImageToCanvas(frames[currentFrameIdx]);
-      saveHistoryState();
-    };
+    box.innerHTML =
+    "<h2>Ошибка Firebase</h2>";
+  }
+};
 
-    // ---------------- VIEW ----------------
-    window.resetView = () => {
-      const cw = viewport.clientWidth;
-      const ch = viewport.clientHeight;
+// ---------- СОХРАНЕНИЕ ----------
+window.saveToCloud = async ()=>{
 
-      scale = Math.min(cw / canvas.width, ch / canvas.height) * 0.9;
-      pX = (cw - canvas.width * scale) / 2;
-      pY = (ch - canvas.height * scale) / 2;
+  try{
 
-      updateTransform();
-    };
+    saveCurrentFrame();
 
-    window.prevFrame = () => {
-      if (frames.length <= 1) return;
-      saveCurrentFrame();
-      currentFrameIdx = Math.max(0, currentFrameIdx - 1);
-      renderTimeline();
-      loadImageToCanvas(frames[currentFrameIdx]);
-    };
+    await addDoc(galleryRef,{
+      image: frames[currentFrameIdx],
+      date: Date.now()
+    });
 
-    window.nextFrame = () => {
-      if (frames.length <= 1) return;
-      saveCurrentFrame();
-      currentFrameIdx = Math.min(frames.length - 1, currentFrameIdx + 1);
-      renderTimeline();
-      loadImageToCanvas(frames[currentFrameIdx]);
-    };
+    alert("Сохранено в глобал 🌍");
 
-    // ---------------- DRAWING ----------------
-    function drawPoint(x, y) {
-      const size = Number(document.getElementById("size").value);
-      const col = document.getElementById("color-preview").style.backgroundColor || "rgb(0,0,0)";
+  }catch(e){
 
-      ctx.beginPath();
-      ctx.arc(x, y, size / 2, 0, Math.PI * 2);
-      ctx.fillStyle = mode === "erase" ? "#ffffff" : col;
-      ctx.fill();
-    }
+    console.error(e);
 
-    function drawLine(x1, y1, x2, y2) {
-      const size = Number(document.getElementById("size").value);
-      const col = document.getElementById("color-preview").style.backgroundColor || "rgb(0,0,0)";
+    alert("Ошибка Firebase");
+  }
+};
 
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.lineWidth = size;
-      ctx.strokeStyle = mode === "erase" ? "#ffffff" : col;
-      ctx.stroke();
-    }
+// ---------- СЛОИ FLIPACLIP ----------
+timeline.style.height = "85px";
 
-    function getTwoPointers() {
-      const arr = [...pointers.values()];
-      return {
-        center: {
-          x: (arr[0].x + arr[1].x) / 2,
-          y: (arr[0].y + arr[1].y) / 2
-        },
-        dist: Math.hypot(arr[0].x - arr[1].x, arr[0].y - arr[1].y)
-      };
-    }
+document.querySelectorAll(".layer-slot")
+.forEach(el=>{
 
-    viewport.addEventListener("pointerdown", (e) => {
-      if (isPlaying) return;
-      viewport.setPointerCapture(e.pointerId);
-      pointers.se
+  el.style.height = "65px";
+  el.style.minWidth = "65px";
+});
+
+// ---------- ВКЛ ----------
+window.resetView();
+</script>
