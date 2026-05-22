@@ -3,491 +3,598 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Suno Global Canvas Pro</title>
+<title>FlipDraw</title>
 <style>
-:root {
-  --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-  --glass-bg: rgba(255, 255, 255, 0.06);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --accent: #008cff;
-  --accent-glow: rgba(0, 140, 255, 0.4);
-  --text-color: #f8fafc;
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;}
+html,body{height:100%;overflow:hidden;}
+body{
+  background:#12121f;
+  color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;
+  height:100dvh;
+  display:flex;
+  flex-direction:column;
+  touch-action:none;
+  user-select:none;
 }
 
-body {
-  margin: 0; padding: 0; 
-  background: var(--bg-gradient); color: var(--text-color);
-  font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+/* ── TOOLBAR ── */
+#toolbar{
+  display:flex;align-items:center;gap:5px;
+  padding:7px 10px;
+  background:#1c1c30;
+  border-bottom:1px solid #2a2a4a;
+  flex-shrink:0;height:54px;
+  z-index:10;
+}
+.tbtn{
+  display:flex;align-items:center;justify-content:center;
+  width:38px;height:38px;
+  border:none;border-radius:9px;
+  background:#2a2a4a;color:#e0e0e0;
+  font-size:19px;cursor:pointer;
+  flex-shrink:0;transition:background .1s,transform .1s;
+}
+.tbtn:active{background:#3d5afe;transform:scale(.9);}
+.tbtn.on{background:#3d5afe;}
+#color-dot{
+  width:38px;height:38px;border-radius:9px;
+  border:2.5px solid #2a2a4a;cursor:pointer;flex-shrink:0;
+  transition:border-color .15s;
+}
+#color-dot:active{border-color:#3d5afe;}
+#fps-sel{
+  background:#2a2a4a;color:#e0e0e0;border:none;
+  border-radius:9px;padding:0 8px;font-size:12px;
+  cursor:pointer;height:38px;flex-shrink:0;
+}
+.sp{flex:1;}
+
+/* ── VIEWPORT ── */
+#viewport{
+  flex:1;position:relative;overflow:hidden;
+  touch-action:none;
+  background:#0e0e1c;
+  background-image:
+    linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);
+  background-size:20px 20px;
+}
+#canvas{
+  position:absolute;transform-origin:0 0;
+  touch-action:none;cursor:crosshair;
+  box-shadow:0 0 50px rgba(0,0,0,.9);
+}
+#onion-cv{
+  position:absolute;transform-origin:0 0;
+  pointer-events:none;opacity:.28;display:none;
 }
 
-.glass-panel {
-  background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+/* ── TIMELINE BAR ── */
+#tl-bar{
+  display:flex;align-items:center;
+  background:#1c1c30;border-top:1px solid #2a2a4a;
+  height:86px;flex-shrink:0;padding:0 10px;gap:8px;
+}
+#tl-scroll{
+  flex:1;overflow-x:auto;overflow-y:hidden;
+  display:flex;align-items:center;gap:6px;
+  padding:6px 2px;
+  scrollbar-width:thin;scrollbar-color:#2a2a4a transparent;
+}
+#tl-scroll::-webkit-scrollbar{height:3px;}
+#tl-scroll::-webkit-scrollbar-thumb{background:#2a2a4a;border-radius:2px;}
+.fslot{
+  position:relative;flex-shrink:0;
+  width:60px;height:68px;border-radius:9px;
+  border:2px solid #2a2a4a;overflow:hidden;
+  cursor:pointer;background:#fff;
+  transition:border-color .15s,transform .1s;
+}
+.fslot.active{border-color:#3d5afe;transform:scale(1.06);}
+.fslot img{width:100%;height:100%;object-fit:contain;display:block;}
+.fnum{
+  position:absolute;bottom:2px;right:4px;
+  font-size:9px;color:rgba(0,0,0,.55);font-weight:700;
+}
+#btn-add{
+  width:52px;height:52px;border-radius:50%;
+  background:#3d5afe;color:#fff;font-size:28px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;flex-shrink:0;border:none;
+  box-shadow:0 4px 16px rgba(61,90,254,.45);
+  transition:transform .1s;
+}
+#btn-add:active{transform:scale(.88);}
+
+/* ── FLOATING PANEL BASE ── */
+.fpanel{
+  position:fixed;background:#1c1c30;
+  border:1px solid #2a2a4a;border-radius:18px;
+  padding:14px;z-index:120;display:none;flex-direction:column;gap:10px;
+  box-shadow:0 10px 40px rgba(0,0,0,.7);
 }
 
-#top-bar {
-  padding: 10px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--glass-border);
-  overflow-x: auto; white-space: nowrap; flex-shrink: 0; z-index: 9999;
+/* ── COLOR PANEL ── */
+#color-panel{
+  bottom:96px;left:50%;transform:translateX(-50%);
+  width:min(290px,90vw);
+}
+#col-swatch{width:100%;height:34px;border-radius:8px;border:1px solid #2a2a4a;}
+.crow{display:flex;align-items:center;gap:8px;font-size:13px;}
+.clbl{width:18px;font-weight:700;font-size:11px;}
+.crow input[type=range]{flex:1;height:6px;border-radius:3px;cursor:pointer;accent-color:#3d5afe;}
+.crow span{width:26px;text-align:right;font-size:11px;color:#aaa;}
+#quick-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;}
+.qsw{
+  width:26px;height:26px;border-radius:6px;cursor:pointer;
+  border:2px solid transparent;transition:border-color .1s,transform .1s;
+}
+.qsw:active{transform:scale(.85);}
+.qsw.sel{border-color:#fff;}
+
+/* ── TOOLS PANEL ── */
+#tools-panel{top:62px;left:50%;transform:translateX(-50%);width:min(240px,85vw);}
+.tgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.tgrid button{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;padding:9px 6px;background:#2a2a4a;border:none;
+  border-radius:10px;color:#e0e0e0;font-size:22px;cursor:pointer;
+  transition:background .1s;
+}
+.tgrid button span{font-size:9px;color:#8899aa;}
+.tgrid button:active{background:#3d5afe;}
+
+/* ── CONTEXT MENU ── */
+#ctx-menu{
+  position:fixed;background:#1c1c30;
+  border:1px solid #2a2a4a;border-radius:12px;
+  padding:6px;z-index:200;display:none;
+  flex-direction:column;gap:2px;min-width:165px;
+  box-shadow:0 8px 28px rgba(0,0,0,.7);
+}
+.citm{
+  display:flex;align-items:center;gap:9px;
+  padding:10px 12px;border-radius:8px;cursor:pointer;
+  font-size:14px;color:#e0e0e0;transition:background .1s;
+}
+.citm:active,.citm:hover{background:#2a2a4a;}
+.citm.red{color:#ff6b6b;}
+
+/* ── BACKDROP ── */
+#backdrop{
+  position:fixed;inset:0;z-index:110;display:none;
+  background:rgba(0,0,0,.4);
 }
 
-button { 
-  background: var(--glass-bg); color: #fff; border: 1px solid var(--glass-border); 
-  border-radius: 8px; padding: 8px 12px; font-size: 14px; cursor: pointer; transition: all 0.2s ease;
+/* ── GALLERY ── */
+#gallery{
+  position:fixed;inset:0;background:rgba(0,0,0,.92);
+  z-index:300;display:none;flex-direction:column;
 }
-button:active { transform: scale(0.95); background: rgba(255,255,255,0.15); }
-.btn-accent { background: var(--accent); border-color: transparent; box-shadow: 0 0 10px var(--accent-glow); }
-
-.fps-select { background: rgba(0,0,0,0.4); color: #fff; border: 1px solid var(--glass-border); border-radius: 8px; padding: 6px; }
-
-#viewport { flex-grow: 1; position: relative; overflow: hidden; touch-action: none; background: #111; }
-canvas { position: absolute; background: #fff; transform-origin: 0 0; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-
-/* FlipaClip Timeline Style */
-#timeline-container {
-  height: 90px; border-top: 1px solid var(--glass-border); display: flex; align-items: center; 
-  padding: 0 10px; gap: 10px; overflow-x: auto; flex-shrink: 0; background: #1a1a24;
+#gal-hdr{
+  display:flex;align-items:center;padding:14px 16px;
+  background:#1c1c30;border-bottom:1px solid #2a2a4a;gap:12px;
 }
-.layer-slot {
-  width: 55px; height: 70px; background: #fff; border: 2px solid transparent; border-radius: 6px; 
-  flex-shrink: 0; position: relative; cursor: pointer; box-sizing: border-box; overflow: hidden;
+#gal-hdr h2{flex:1;font-size:17px;}
+#gal-grid{
+  flex:1;overflow-y:auto;padding:12px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;
+  align-content:start;
 }
-.layer-slot.active { border-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); transform: scale(1.05); }
-.layer-slot img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; background: #fff; }
-.layer-number { position: absolute; bottom: 2px; right: 4px; font-size: 10px; background: rgba(0,0,0,0.7); padding: 1px 4px; border-radius: 4px; color: #fff; }
-#btn-add-frame {
-  width: 55px; height: 70px; border: 2px dashed #666; border-radius: 6px; background: rgba(255,255,255,0.05);
-  color: #aaa; font-size: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer;
+.acard{
+  background:#fff;border-radius:10px;overflow:hidden;
+  aspect-ratio:4/3;cursor:pointer;
 }
+.acard img{width:100%;height:100%;object-fit:contain;}
 
-.floating-panel {
-  position: fixed; top: 70px; border-radius: 12px; padding: 15px; display: none; flex-direction: column; gap: 10px; z-index: 10000; width: 220px;
+/* ── SIZE INDICATOR ── */
+#sz-wrap{
+  position:fixed;bottom:96px;left:12px;
+  width:44px;height:44px;display:flex;
+  align-items:center;justify-content:center;
+  pointer-events:none;z-index:5;
 }
-#context-menu {
-  position: fixed; z-index: 25000; display: none; flex-direction: column; gap: 5px; width: 160px; padding: 8px; border-radius: 10px;
+#sz-dot{border-radius:50%;background:#3d5afe;transition:width .1s,height .1s;}
+
+/* spinner */
+.spin{
+  width:30px;height:30px;border:3px solid #2a2a4a;
+  border-top-color:#3d5afe;border-radius:50%;
+  animation:sp .8s linear infinite;margin:30px auto;
 }
+@keyframes sp{to{transform:rotate(360deg);}}
 
-#gallery-overlay { position: fixed; inset: 0; background: rgba(10,10,15,0.95); backdrop-filter: blur(20px); z-index: 20000; display: none; flex-direction: column; padding: 15px; }
-#gallery-content { margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; overflow-y: auto; }
-.art-card { background: #222; padding: 5px; border-radius: 6px; text-align: center; }
-.art-card img { width: 100%; height: 120px; object-fit: contain; background: #fff; }
-
-.preview-container { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; }
-#color-preview { width: 100%; height: 25px; border-radius: 4px; margin-bottom: 5px; }
-#size-indicator { background: #fff; border-radius: 50%; margin: 0 auto; }
-input[type=range] { width: 100%; accent-color: var(--accent); }
+@media(max-width:380px){
+  .tbtn{width:33px;height:33px;font-size:16px;}
+  #color-dot{width:33px;height:33px;}
+}
 </style>
 </head>
 <body>
 
-<div id="top-bar" class="glass-panel">
-  <button onclick="window.undoBtn()">↩️</button>
-  <button onclick="window.togglePanel('tools-panel')">🛠 Инструменты</button>
-  <button onclick="window.togglePanel('colors-panel')">🎨 Цвет</button>
-  
-  <select id="fps-select" class="fps-select" onchange="window.changeFps(this.value)"></select>
-  <button onclick="window.togglePlayer()" id="btn-play" class="btn-accent">▶️ Тест</button>
-  <button onclick="window.downloadVideo()" style="color:#00ff88">💾 Видео</button>
-  
-  <button onclick="window.toggleGallery()" style="color:#ffae00">🌍 Глобально</button>
-  <button onclick="window.saveToCloud()" style="color:#00e5ff">☁️ В сеть</button>
-  
-  <button onclick="window.resetView()">🎯 В центр</button>
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <button class="tbtn" id="btn-undo"   onclick="undoAction()"       title="Отмена">↩️</button>
+  <button class="tbtn" id="btn-tools"  onclick="togglePanel('tools-panel')" title="Инструменты">✏️</button>
+  <div    id="color-dot"               onclick="togglePanel('color-panel')"></div>
+  <button class="tbtn" id="btn-play"   onclick="togglePlay()">▶️</button>
+  <select id="fps-sel" onchange="changeFps(this.value)"></select>
+  <div class="sp"></div>
+  <button class="tbtn" onclick="saveCloud()" title="Опубликовать">☁️</button>
+  <button class="tbtn" onclick="openGallery()" title="Галерея">🖼️</button>
+  <button class="tbtn" onclick="exportVideo()" title="Скачать">💾</button>
 </div>
 
-<div id="tools-panel" class="floating-panel glass-panel" style="left:10px">
-  <button onclick="window.setMode('draw')">✏️ Кисть</button>
-  <button onclick="window.setMode('erase')">🧽 Ластик</button>
-  <button onclick="window.clearCanvas()" style="color:#ff4a4a">🗑 Очистить кадр</button>
-</div>
-
-<div id="colors-panel" class="floating-panel glass-panel" style="right:10px">
-  <div class="preview-container">
-    <div id="color-preview"></div>
-    <div style="height: 60px; display:flex; align-items:center;"><div id="size-indicator"></div></div>
-  </div>
-  Размер: <span id="val-size">5</span>
-  <input type="range" id="size" min="1" max="100" value="5" oninput="window.updColor()">
-  R: <span id="val-r">0</span> <input type="range" id="r" max="255" value="0" oninput="window.updColor()">
-  G: <span id="val-g">0</span> <input type="range" id="g" max="255" value="0" oninput="window.updColor()">
-  B: <span id="val-b">0</span> <input type="range" id="b" max="255" value="0" oninput="window.updColor()">
-</div>
-
+<!-- VIEWPORT -->
 <div id="viewport">
-  <canvas id="canvas" width="720" height="1280"></canvas>
+  <canvas id="canvas"   width="800" height="600"></canvas>
+  <canvas id="onion-cv" width="800" height="600"></canvas>
 </div>
 
-<!-- FlipaClip Таймлайн -->
-<div id="timeline-container" class="glass-panel">
-  <!-- Сюда добавляются кадры через JS -->
+<!-- TIMELINE -->
+<div id="tl-bar">
+  <div id="tl-scroll"></div>
+  <button id="btn-add" onclick="addFrame()">+</button>
 </div>
 
-<div id="context-menu" class="glass-panel">
-  <button onclick="window.duplicateFrame()">📑 Повторить</button>
-  <button onclick="window.deleteFrame()" style="color:#ff4a4a">🗑 Удалить</button>
+<!-- COLOR PANEL -->
+<div class="fpanel" id="color-panel">
+  <div id="col-swatch"></div>
+  <div class="crow">
+    <span class="clbl" style="color:#ff6666">R</span>
+    <input type="range" id="r" min="0" max="255" value="0" oninput="syncColor()">
+    <span id="vr">0</span>
+  </div>
+  <div class="crow">
+    <span class="clbl" style="color:#66ff88">G</span>
+    <input type="range" id="g" min="0" max="255" value="0" oninput="syncColor()">
+    <span id="vg">0</span>
+  </div>
+  <div class="crow">
+    <span class="clbl" style="color:#6699ff">B</span>
+    <input type="range" id="b" min="0" max="255" value="0" oninput="syncColor()">
+    <span id="vb">0</span>
+  </div>
+  <div class="crow">
+    <span class="clbl">📏</span>
+    <input type="range" id="sz" min="1" max="70" value="8" oninput="syncColor()">
+    <span id="vsz">8</span>
+  </div>
+  <div id="quick-row"></div>
 </div>
 
-<div id="gallery-overlay">
-  <button onclick="window.toggleGallery()" style="background:#ff4a4a">❌ Закрыть галерею</button>
-  <div id="gallery-content"></div>
+<!-- TOOLS PANEL -->
+<div class="fpanel" id="tools-panel">
+  <div class="tgrid">
+    <button onclick="setMode('draw')">✏️<span>Кисть</span></button>
+    <button onclick="setMode('erase')">🧹<span>Ластик</span></button>
+    <button onclick="clearFrame()">🗑️<span>Очистить</span></button>
+    <button onclick="fillFrame()">🪣<span>Залить</span></button>
+    <button onclick="toggleOnion()">👻<span>Луковица</span></button>
+    <button onclick="closeAll()">✕<span>Закрыть</span></button>
+  </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/webm-writer@0.3.0/src/WebMWriter.js"></script>
+<!-- BACKDROP -->
+<div id="backdrop" onclick="closeAll()"></div>
+
+<!-- CONTEXT MENU -->
+<div id="ctx-menu">
+  <div class="citm" onclick="menuDupe()">📋 Дублировать</div>
+  <div class="citm" onclick="menuMoveL()">⬅️ Влево</div>
+  <div class="citm" onclick="menuMoveR()">➡️ Вправо</div>
+  <div class="citm red" onclick="menuDel()">🗑️ Удалить</div>
+</div>
+
+<!-- GALLERY -->
+<div id="gallery">
+  <div id="gal-hdr">
+    <h2>🌐 Глобальная галерея</h2>
+    <button class="tbtn" onclick="closeGallery()">✕</button>
+  </div>
+  <div id="gal-grid"></div>
+</div>
+
+<!-- SIZE INDICATOR -->
+<div id="sz-wrap"><div id="sz-dot"></div></div>
 
 <script type="module">
+/* ============================================================
+   FIREBASE
+============================================================ */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, doc, updateDoc, increment, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit }
+  from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// FIREBASE
-const firebaseConfig = {
-    apiKey: "AIzaSyCekB6vZ6qGAnvDO1LOA7OUGmA3zU1aLoA",
-    authDomain: "suno-gallery.firebaseapp.com",
-    projectId: "suno-gallery",
-    appId: "1:314284584278:web:97c5b91180562fd1c93af7"
-};
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const galleryRef = collection(db, "drawings");
-let USER_ID = localStorage.getItem("u_id") || ('u'+Math.random());
-localStorage.setItem("u_id", USER_ID);
+let db = null, galleryRef = null;
+try {
+  const app = initializeApp({
+    apiKey:"AIzaSyCekB6vZ6qGAnvDO1LOA7OUGmA3zU1aLoA",
+    authDomain:"suno-gallery.firebaseapp.com",
+    projectId:"suno-gallery",
+    appId:"1:314284584278:web:97c5b91180562fd1c93af7"
+  });
+  db = getFirestore(app);
+  galleryRef = collection(db,"drawings");
+} catch(e){ console.warn("Firebase:", e); }
 
-window.saveToCloud = async () => {
-    if(!confirm("Опубликовать текущий кадр в глобальную сеть?")) return;
-    try {
-        await addDoc(galleryRef, { image: frames[currentFrameIdx], date: Date.now(), reports: 0, reporters: [] });
-        alert("Опубликовано!");
-    } catch(e) { alert("Ошибка публикации"); }
-};
+let USER_ID = localStorage.getItem("uid") || ("u"+Math.random().toString(36).slice(2));
+localStorage.setItem("uid", USER_ID);
 
-window.loadGlobalGallery = async () => {
-    const box = document.getElementById("gallery-content");
-    box.innerHTML = "<div style='color:white'>Загрузка...</div>";
-    const snap = await getDocs(query(galleryRef, orderBy("date", "desc"), limit(20)));
-    box.innerHTML = "";
-    snap.forEach(d => {
-        const data = d.data();
-        const div = document.createElement("div");
-        div.className = "art-card";
-        div.innerHTML = `<img src="${data.image}">`;
-        box.appendChild(div);
-    });
-};
-</script>
+/* ============================================================
+   CANVAS & STATE
+============================================================ */
+const cv    = document.getElementById("canvas");
+const ctx   = cv.getContext("2d");
+const ocv   = document.getElementById("onion-cv");
+const octx  = ocv.getContext("2d");
+const vp    = document.getElementById("viewport");
+const tlScroll = document.getElementById("tl-scroll");
 
-<script>
-// --- CORE VARIABLES ---
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-const viewport = document.getElementById("viewport");
-const timeline = document.getElementById("timeline-container");
+let frames = [], curIdx = 0, history = [];
+let fps = 12, playing = false, playTick = null;
+let scale = 1, px = 0, py = 0;
+let ptrs = new Map();
+let pStart = {}; // pinch start snapshot
+let drawPtr = null, drawing = false;
+let lx = 0, ly = 0;
+let mode = "draw";
+let onion = false;
+let menuIdx = 0;
 
-let frames = [];
-let currentFrameIdx = 0;
-let fps = 12;
-let isPlaying = false;
-let playInterval = null;
+/* ============================================================
+   INIT
+============================================================ */
+window.addEventListener("load", () => {
+  // FPS options
+  const sel = document.getElementById("fps-sel");
+  [4,6,8,10,12,15,18,24].forEach(n => {
+    const o = document.createElement("option");
+    o.value = n; o.textContent = n+" fps";
+    if(n===12) o.selected = true;
+    sel.appendChild(o);
+  });
 
-// Zoom & Pan variables
-let scale = 1, pX = 0, pY = 0;
-let startScale = 1, startPinchDist = 0, startPanX = 0, startPanY = 0;
-let mode = "draw", isDrawing = false, lastX = 0, lastY = 0;
+  // Quick color swatches
+  const palette = ["#000000","#ffffff","#f44336","#4caf50","#2196f3",
+                   "#ffeb3b","#ff9800","#9c27b0","#00bcd4","#ff4081","#795548","#607d8b"];
+  const row = document.getElementById("quick-row");
+  palette.forEach(c => {
+    const d = document.createElement("div");
+    d.className = "qsw"; d.style.background = c;
+    d.onclick = () => { setRgb(hexRgb(c)); syncColor(); };
+    row.appendChild(d);
+  });
 
-let frameHistory = []; // Для отмены действий (Undo)
+  // Blank first frame
+  ctx.fillStyle = "#fff"; ctx.fillRect(0,0,cv.width,cv.height);
+  frames = [cv.toDataURL()];
+  curIdx = 0; history = [frames[0]];
 
-// --- INITIALIZATION ---
-window.onload = () => {
-    const fpsSel = document.getElementById('fps-select');
-    for(let i=1; i<=60; i++) {
-        let opt = document.createElement('option');
-        opt.value = i; opt.innerText = i + ' fps';
-        if(i === 12) opt.selected = true;
-        fpsSel.appendChild(opt);
-    }
-    
-    // Изначальный белый фон
-    ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,canvas.width,canvas.height);
-    frames.push(canvas.toDataURL());
-    saveHistoryState();
-    
-    renderTimeline();
-    window.updColor();
-    window.resetView(); // Центрируем по размеру экрана
-};
-
-// --- TIMELINE & FRAMES (FLIPACLIP STYLE) ---
-function renderTimeline() {
-    timeline.innerHTML = "";
-    frames.forEach((imgData, index) => {
-        const slot = document.createElement("div");
-        slot.className = `layer-slot ${index === currentFrameIdx ? 'active' : ''}`;
-        slot.innerHTML = `<img src="${imgData}"><div class="layer-number">${index + 1}</div>`;
-        
-        slot.onclick = () => { if(!isPlaying) selectFrame(index); };
-        
-        // Долгое нажатие для контекстного меню
-        let pressTimer;
-        slot.ontouchstart = (e) => { if(isPlaying) return; pressTimer = setTimeout(() => showMenu(e, index), 500); };
-        slot.ontouchend = () => clearTimeout(pressTimer);
-        slot.ontouchmove = () => clearTimeout(pressTimer);
-        
-        timeline.appendChild(slot);
-    });
-    
-    // Кнопка добавления в конце
-    const addBtn = document.createElement("div");
-    addBtn.id = "btn-add-frame";
-    addBtn.innerText = "+";
-    addBtn.onclick = window.addNewFrame;
-    timeline.appendChild(addBtn);
-}
-
-function selectFrame(idx) {
-    frames[currentFrameIdx] = canvas.toDataURL(); // Сохраняем текущий перед переходом
-    currentFrameIdx = idx;
-    frameHistory = [frames[currentFrameIdx]]; // Сброс истории для нового кадра
-    renderTimeline();
-    drawCanvasWithOnion();
-}
-
-window.addNewFrame = () => {
-    if(isPlaying) return;
-    frames[currentFrameIdx] = canvas.toDataURL();
-    
-    const tempCanvas = document.createElement("canvas");
-    tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
-    const tCtx = tempCanvas.getContext("2d");
-    tCtx.fillStyle = "#ffffff"; tCtx.fillRect(0,0,canvas.width,canvas.height);
-    
-    frames.splice(currentFrameIdx + 1, 0, tempCanvas.toDataURL());
-    currentFrameIdx++;
-    renderTimeline();
-    drawCanvasWithOnion();
-    saveHistoryState();
-};
-
-function drawCanvasWithOnion() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,canvas.width,canvas.height);
-
-    if (currentFrameIdx > 0 && !isPlaying) {
-        const prevImg = new Image();
-        prevImg.src = frames[currentFrameIdx - 1];
-        prevImg.onload = () => {
-            ctx.globalAlpha = 0.3; // Калька
-            ctx.drawImage(prevImg, 0, 0);
-            ctx.globalAlpha = 1.0;
-            drawCurrentFrame();
-        };
-    } else {
-        drawCurrentFrame();
-    }
-}
-
-function drawCurrentFrame() {
-    const img = new Image();
-    img.src = frames[currentFrameIdx];
-    img.onload = () => ctx.drawImage(img, 0, 0);
-}
-
-// --- HISTORY (UNDO) ---
-function saveHistoryState() {
-    frameHistory.push(canvas.toDataURL());
-    if(frameHistory.length > 15) frameHistory.shift();
-    updateCurrentThumbnail();
-}
-window.undoBtn = () => {
-    if(frameHistory.length > 1) {
-        frameHistory.pop(); // удаляем текущее состояние
-        const img = new Image();
-        img.src = frameHistory[frameHistory.length - 1];
-        img.onload = () => {
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-            ctx.drawImage(img, 0, 0);
-            frames[currentFrameIdx] = canvas.toDataURL();
-            updateCurrentThumbnail();
-            drawCanvasWithOnion(); // перерисовываем с калькой
-        };
-    }
-};
-
-function updateCurrentThumbnail() {
-    frames[currentFrameIdx] = canvas.toDataURL();
-    const activeSlot = timeline.querySelector('.layer-slot.active img');
-    if(activeSlot) activeSlot.src = frames[currentFrameIdx];
-}
-
-// --- CONTEXT MENU ---
-let menuTargetIdx = 0;
-function showMenu(e, idx) {
-    e.preventDefault();
-    menuTargetIdx = idx;
-    const touch = e.touches ? e.touches[0] : e;
-    const menu = document.getElementById("context-menu");
-    menu.style.display = "flex";
-    menu.style.left = `${Math.min(touch.clientX, window.innerWidth - 170)}px`;
-    menu.style.top = `${Math.min(touch.clientY, window.innerHeight - 150)}px`;
-}
-window.addEventListener("click", (e) => {
-    if(!e.target.closest('.layer-slot') && !e.target.closest('#context-menu')) {
-        document.getElementById("context-menu").style.display = "none";
-    }
+  syncColor();
+  renderTL();
+  resetView();
 });
 
-window.duplicateFrame = () => {
-    frames.splice(menuTargetIdx + 1, 0, frames[menuTargetIdx]);
-    currentFrameIdx = menuTargetIdx + 1;
-    document.getElementById("context-menu").style.display = "none";
-    renderTimeline(); drawCanvasWithOnion(); saveHistoryState();
-};
+window.addEventListener("resize", resetView);
 
-window.deleteFrame = () => {
-    if(frames.length <= 1) { alert("Последний кадр!"); return; }
-    frames.splice(menuTargetIdx, 1);
-    currentFrameIdx = Math.max(0, menuTargetIdx - 1);
-    document.getElementById("context-menu").style.display = "none";
-    renderTimeline(); drawCanvasWithOnion(); saveHistoryState();
-};
-
-// --- ZOOM & PAN (TWO FINGERS) & DRAWING ---
-window.resetView = () => {
-    const cw = viewport.clientWidth, ch = viewport.clientHeight;
-    // Вписываем канвас в экран
-    scale = Math.min(cw / canvas.width, ch / canvas.height) * 0.9;
-    pX = (cw - canvas.width * scale) / 2;
-    pY = (ch - canvas.height * scale) / 2;
-    updateTransform();
-};
-
-function updateTransform() {
-    canvas.style.transform = `translate(${pX}px, ${pY}px) scale(${scale})`;
+/* ============================================================
+   HELPERS
+============================================================ */
+function hexRgb(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
+function setRgb([r,g,b]){
+  document.getElementById("r").value=r;
+  document.getElementById("g").value=g;
+  document.getElementById("b").value=b;
+}
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+function screen2cv(cx,cy){
+  const r = vp.getBoundingClientRect();
+  return { x:(cx-r.left-px)/scale, y:(cy-r.top-py)/scale };
+}
+function setTransform(){
+  const t = `translate(${px}px,${py}px) scale(${scale})`;
+  cv.style.transform = t; ocv.style.transform = t;
+}
+function saveCur(){ frames[curIdx] = cv.toDataURL(); }
+function loadFrame(url){ return new Promise(res => {
+  const img = new Image();
+  img.onload = () => { ctx.fillStyle="#fff"; ctx.fillRect(0,0,cv.width,cv.height); ctx.drawImage(img,0,0); res(); };
+  img.src = url;
+});}
+function updateThumb(i){
+  const slots = tlScroll.querySelectorAll(".fslot");
+  if(slots[i]) slots[i].querySelector("img").src = frames[i];
+}
+function pushHistory(){
+  history.push(cv.toDataURL());
+  if(history.length>25) history.shift();
 }
 
-function getPos(e) {
-    const rect = viewport.getBoundingClientRect();
-    const t = e.touches ? e.touches[0] : e;
-    return { 
-        x: (t.clientX - rect.left - pX) / scale, 
-        y: (t.clientY - rect.top - pY) / scale 
-    };
+/* ============================================================
+   ONION SKIN
+============================================================ */
+function drawOnion(){
+  octx.clearRect(0,0,ocv.width,ocv.height);
+  if(!onion || curIdx===0) return;
+  const img = new Image();
+  img.onload = () => octx.drawImage(img,0,0);
+  img.src = frames[curIdx-1];
 }
 
-viewport.addEventListener('touchstart', e => {
-    if(isPlaying) return;
-    if(e.touches.length === 2) {
-        isDrawing = false;
-        // Настройка для зума/панорамирования
-        startPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-        startScale = scale;
-        startPanX = (e.touches[0].clientX + e.touches[1].clientX)/2 - pX;
-        startPanY = (e.touches[0].clientY + e.touches[1].clientY)/2 - pY;
-    } else if(e.touches.length === 1) {
-        isDrawing = true;
-        const p = getPos(e); lastX = p.x; lastY = p.y;
-        drawPoint(p.x, p.y);
-    }
-}, {passive: false});
+/* ============================================================
+   TIMELINE
+============================================================ */
+function renderTL(){
+  tlScroll.innerHTML = "";
+  frames.forEach((d,i) => {
+    const slot = document.createElement("div");
+    slot.className = "fslot" + (i===curIdx?" active":"");
+    const im = document.createElement("img"); im.src=d; im.alt="";
+    const nm = document.createElement("div"); nm.className="fnum"; nm.textContent=i+1;
+    slot.appendChild(im); slot.appendChild(nm);
 
-viewport.addEventListener('touchmove', e => {
-    if(isPlaying) return;
-    e.preventDefault(); // Останавливаем скролл страницы
-    if(e.touches.length === 2) {
-        const currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-        scale = startScale * (currentDist / startPinchDist);
-        pX = (e.touches[0].clientX + e.touches[1].clientX)/2 - startPanX;
-        pY = (e.touches[0].clientY + e.touches[1].clientY)/2 - startPanY;
-        updateTransform();
-    } else if(isDrawing && e.touches.length === 1) {
-        const p = getPos(e);
-        drawLine(lastX, lastY, p.x, p.y);
-        lastX = p.x; lastY = p.y;
-    }
-}, {passive: false});
+    slot.addEventListener("click", () => { if(!playing) selFrame(i); });
 
-window.addEventListener('touchend', e => { 
-    if(isDrawing && e.touches.length === 0) {
-        saveHistoryState(); 
-        isDrawing = false; 
-    }
+    let pt = null;
+    slot.addEventListener("pointerdown", e => {
+      if(playing) return;
+      pt = setTimeout(()=>showCtxMenu(e,i), 480);
+    });
+    ["pointerup","pointerleave","pointercancel"].forEach(ev => slot.addEventListener(ev,()=>clearTimeout(pt)));
+    slot.addEventListener("contextmenu", e => { e.preventDefault(); showCtxMenu(e,i); });
+
+    tlScroll.appendChild(slot);
+  });
+  // Scroll active into view
+  requestAnimationFrame(() => {
+    const a = tlScroll.querySelector(".fslot.active");
+    if(a) a.scrollIntoView({behavior:"smooth",inline:"nearest",block:"nearest"});
+  });
+}
+
+function selFrame(i){
+  saveCur(); curIdx=i; history=[frames[curIdx]];
+  renderTL(); loadFrame(frames[curIdx]).then(drawOnion);
+}
+
+function addFrame(){
+  if(playing) return;
+  saveCur();
+  const b=document.createElement("canvas"); b.width=cv.width; b.height=cv.height;
+  b.getContext("2d").fillStyle="#fff"; b.getContext("2d").fillRect(0,0,b.width,b.height);
+  frames.splice(curIdx+1,0,b.toDataURL()); curIdx++;
+  history=[frames[curIdx]]; renderTL(); loadFrame(frames[curIdx]).then(drawOnion);
+}
+
+/* ============================================================
+   UNDO
+============================================================ */
+function undoAction(){
+  if(history.length<=1) return;
+  history.pop();
+  loadFrame(history[history.length-1]).then(()=>{ frames[curIdx]=cv.toDataURL(); updateThumb(curIdx); });
+}
+
+/* ============================================================
+   CONTEXT MENU
+============================================================ */
+function showCtxMenu(e,i){
+  e.preventDefault?.();
+  menuIdx=i;
+  const m=document.getElementById("ctx-menu");
+  const x=e.clientX||0, y=e.clientY||0;
+  m.style.display="flex";
+  m.style.left=clamp(x,4,innerWidth-170)+"px";
+  m.style.top =clamp(y,4,innerHeight-170)+"px";
+}
+function hideCtxMenu(){ document.getElementById("ctx-menu").style.display="none"; }
+
+window.addEventListener("pointerdown", e => {
+  if(!e.target.closest(".fslot")&&!e.target.closest("#ctx-menu")) hideCtxMenu();
 });
 
-function drawPoint(x, y) {
-    ctx.beginPath(); ctx.arc(x, y, document.getElementById('size').value / 2, 0, Math.PI * 2);
-    ctx.fillStyle = mode === 'erase' ? '#ffffff' : document.getElementById('color-preview').style.backgroundColor;
-    ctx.fill();
+function menuDupe(){
+  frames.splice(menuIdx+1,0,frames[menuIdx]); curIdx=menuIdx+1;
+  hideCtxMenu(); history=[frames[curIdx]]; renderTL(); loadFrame(frames[curIdx]).then(drawOnion);
 }
-function drawLine(x1, y1, x2, y2) {
-    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-    ctx.lineCap = "round"; ctx.lineJoin = "round";
-    ctx.lineWidth = document.getElementById('size').value;
-    ctx.strokeStyle = mode === 'erase' ? '#ffffff' : document.getElementById('color-preview').style.backgroundColor;
-    ctx.stroke();
+function menuDel(){
+  if(frames.length<=1){ alert("Последний кадр!"); return; }
+  frames.splice(menuIdx,1); curIdx=clamp(menuIdx-1,0,frames.length-1);
+  hideCtxMenu(); history=[frames[curIdx]]; renderTL(); loadFrame(frames[curIdx]).then(drawOnion);
+}
+function menuMoveL(){
+  if(menuIdx===0) return;
+  [frames[menuIdx-1],frames[menuIdx]]=[frames[menuIdx],frames[menuIdx-1]];
+  curIdx=menuIdx-1; hideCtxMenu(); renderTL();
+}
+function menuMoveR(){
+  if(menuIdx>=frames.length-1) return;
+  [frames[menuIdx+1],frames[menuIdx]]=[frames[menuIdx],frames[menuIdx+1]];
+  curIdx=menuIdx+1; hideCtxMenu(); renderTL();
 }
 
-// --- PLAYER & EXPORT ---
-window.changeFps = (val) => { fps = parseInt(val); if(isPlaying){ window.togglePlayer(); window.togglePlayer(); }};
+/* ============================================================
+   VIEW / RESET
+============================================================ */
+function resetView(){
+  const cw=vp.clientWidth, ch=vp.clientHeight;
+  scale=Math.min(cw/cv.width, ch/cv.height)*.88;
+  px=(cw-cv.width*scale)/2; py=(ch-cv.height*scale)/2;
+  setTransform();
+}
 
-window.togglePlayer = () => {
-    if(isPlaying) {
-        isPlaying = false; clearInterval(playInterval);
-        document.getElementById("btn-play").innerHTML = "▶️ Тест";
-        selectFrame(currentFrameIdx); // Возвращаем интерфейс
-    } else {
-        frames[currentFrameIdx] = canvas.toDataURL(); // Сохраняем текущий
-        isPlaying = true; document.getElementById("btn-play").innerHTML = "⏹️ Стоп";
-        let playIdx = 0;
-        playInterval = setInterval(() => {
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-            const img = new Image(); img.src = frames[playIdx];
-            img.onload = () => ctx.drawImage(img, 0, 0);
-            
-            document.querySelectorAll(".layer-slot").forEach((s, i) => s.classList.toggle("active", i === playIdx));
-            playIdx = (playIdx + 1) % frames.length;
-        }, 1000 / fps);
-    }
-};
+/* ============================================================
+   DRAWING  +  PINCH ZOOM  (Pointer Events)
+============================================================ */
+vp.addEventListener("pointerdown", e => {
+  if(playing) return;
+  e.preventDefault();
+  vp.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
 
-window.downloadVideo = () => {
-    if(isPlaying) window.togglePlayer();
-    frames[currentFrameIdx] = canvas.toDataURL();
-    
-    const videoWriter = new WebMWriter({ quality: 0.95, frameRate: fps });
-    let idx = 0;
-    const processFrame = () => {
-        if(idx >= frames.length) {
-            const blob = videoWriter.complete();
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob); a.download = 'flipaclip_export.mp4'; a.click();
-            return;
-        }
-        const img = new Image(); img.src = frames[idx];
-        img.onload = () => {
-            ctx.fillStyle="#fff"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0);
-            videoWriter.addFrame(canvas); idx++; processFrame();
-        };
+  if(ptrs.size===1){
+    drawPtr=e.pointerId; drawing=true;
+    const p=screen2cv(e.clientX,e.clientY);
+    lx=p.x; ly=p.y; dot(p.x,p.y);
+  } else if(ptrs.size===2){
+    // cancel any active stroke
+    drawPtr=null; drawing=false;
+    const [a,b]=[...ptrs.values()];
+    const rect=vp.getBoundingClientRect();
+    pStart={
+      dist: Math.hypot(a.x-b.x, a.y-b.y),
+      scale, px, py,
+      cx: (a.x+b.x)/2 - rect.left,
+      cy: (a.y+b.y)/2 - rect.top
     };
-    alert("Генерация видео началась...");
-    processFrame();
-};
+  }
+},{passive:false});
 
-// --- UI HELPERS ---
-window.togglePanel = (id) => {
-    const el = document.getElementById(id);
-    const isVis = el.style.display === 'flex';
-    document.querySelectorAll('.floating-panel').forEach(p => p.style.display = 'none');
-    el.style.display = isVis ? 'none' : 'flex';
-};
-window.setMode = (m) => { mode = m; window.togglePanel('tools-panel'); };
-window.clearCanvas = () => { ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,canvas.width,canvas.height); saveHistoryState(); window.togglePanel('tools-panel'); };
+vp.addEventListener("pointermove", e => {
+  if(playing||!ptrs.has(e.pointerId)) return;
+  e.preventDefault();
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
 
-window.toggleGallery = () => {
-    const g = document.getElementById("gallery-overlay");
-    if(g.style.display === 'flex') { g.style.display = 'none'; }
-    else { g.style.display = 'flex'; window.loadGlobalGallery(); }
-};
+  if(ptrs.size>=2){
+    const [a,b]=[...ptrs.values()];
+    const rect=vp.getBoundingClientRect();
+    const dist=Math.hypot(a.x-b.x, a.y-b.y);
+    const newScale=clamp(pStart.scale*(dist/pStart.dist), .08, 18);
+    // canvas coords under the initial pinch center
+    const cvX=(pStart.cx-pStart.px)/pStart.scale;
+    const cvY=(pStart.cy-pStart.py)/pStart.scale;
+    // current center screen
+    const curCX=(a.x+b.x)/2-rect.left;
+    const curCY=(a.y+b.y)/2-rect.top;
+    scale=newScale;
+    px=curCX - cvX*scale;
+    py=curCY - cvY*scale;
+    setTransform();
+    return;
+  }
 
-window.updColor = () => {
-    const r = document.getElementById('r').value, g = document.getElementById('g').value, b = document.getElementById('b').value, s = document.getElementById('size').value;
-    const col = `rgb(${r},${g},${b})`;
-    document.getElementById('color-preview').style.backgroundColor = col;
-    const si = document.getElementById('size-indicator');
-    si.style.backgroundColor = col; si.style.width = s+"px"; si.style.height = s+"px";
-    document.getElementById('val-r').innerText = r; document.getElementById('val-g').innerText = g; document.getElementById('val-b').inn
+  if(ptrs.size===1&&drawPtr===e.pointerId&&drawing){
+    const p=screen2cv(e.clientX,e.clientY);
+    line(lx,ly,p.x,p.y); lx=p.x; ly=p.y;
+  }
+},{passive:false});
+
+function endPtr(e){
+  if(!ptrs.has(e.pointerId)) return;
+  ptrs.delete(e.pointerId);
+  if(drawing&&ptrs.size===0){
+    drawing=false; drawPtr=null;
+    pushHistory(); saveCur(); updateThumb(curIdx);
+  }
+}
+vp.addEventListener("pointerup",   endPtr,{passive:false});
+vp.addEventListener("pointercancel",endPtr,{passive:false});
+
+// Mouse wheel zoom
+vp.addEventListener("wheel", e => {
+  e.preventDefault();
+  const rect=vp.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  const cvX=(mx-px)/sc
