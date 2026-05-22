@@ -6,50 +6,92 @@
 <title>Suno Global Canvas Pro</title>
 <style>
 :root {
-  --bg-color: #121212; --panel-bg: #222222; --btn-bg: #333333; --text-color: #f0f0f0; --accent: #008cff;
+  --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --accent: #008cff;
+  --accent-glow: rgba(0, 140, 255, 0.4);
+  --text-color: #f8fafc;
 }
+
 body {
-  margin: 0; padding: 0; background: var(--bg-color); color: var(--text-color);
-  font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+  margin: 0; padding: 0; 
+  background: var(--bg-gradient);
+  color: var(--text-color);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+  height: 100vh; display: flex; flex-direction: column; overflow: hidden;
 }
+
+/* Элементы интерфейса Liquid Glass */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
 #top-bar {
-  background: var(--panel-bg); padding: 8px; display: flex; gap: 8px; align-items: center;
-  border-bottom: 1px solid #444; overflow-x: auto; white-space: nowrap; flex-shrink: 0; z-index: 9999;
+  padding: 10px; display: flex; gap: 10px; align-items: center;
+  border-bottom: 1px solid var(--glass-border); overflow-x: auto; white-space: nowrap; flex-shrink: 0; z-index: 9999;
 }
+
 .size-inputs { display: flex; align-items: center; gap: 5px; }
-.size-inputs input { width: 45px; background: #000; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 5px; }
-button { background: var(--btn-bg); color: #fff; border: 1px solid #555; border-radius: 5px; padding: 8px 12px; font-size: 14px; cursor: pointer; }
-button:disabled { opacity: 0.3; }
-#viewport { flex-grow: 1; position: relative; background: #181818; overflow: hidden; touch-action: none; }
-canvas { position: absolute; background: #fff; transform-origin: 0 0; }
+.size-inputs input, .fps-select { 
+  background: rgba(0,0,0,0.4); color: #fff; border: 1px solid var(--glass-border); 
+  border-radius: 8px; padding: 6px 10px; outline: none; font-size: 14px;
+}
+
+button { 
+  background: var(--glass-bg); color: #fff; border: 1px solid var(--glass-border); 
+  border-radius: 8px; padding: 8px 14px; font-size: 14px; cursor: pointer;
+  transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center;
+}
+button:active { transform: scale(0.95); background: rgba(255,255,255,0.15); }
+button:disabled { opacity: 0.2; transform: none; }
+.btn-accent { background: var(--accent); border-color: transparent; box-shadow: 0 0 15px var(--accent-glow); }
+
+#viewport { flex-grow: 1; position: relative; overflow: hidden; touch-action: none; display: flex; align-items: center; justify-content: center; }
+canvas { position: absolute; background: #fff; transform-origin: center center; box-shadow: 0 15px 35px rgba(0,0,0,0.5); border-radius: 4px; }
+
 .floating-panel {
-  position: fixed; top: 70px; background: rgba(30,30,30,0.95); border: 1px solid #666;
-  border-radius: 8px; padding: 15px; display: none; flex-direction: column; gap: 10px; z-index: 10000;
-  max-height: 80vh; overflow-y: auto; width: 220px;
+  position: fixed; top: 75px; border-radius: 12px; padding: 15px; display: none; flex-direction: column; gap: 10px; z-index: 10000;
+  max-height: 70vh; overflow-y: auto; width: 220px;
 }
-.preview-container { 
-    display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; 
-    background: #000; padding: 10px; border-radius: 6px; border: 1px solid #444;
+
+/* Временная шкала слоев внизу (Timeline) */
+#timeline-container {
+  height: 95px; border-top: 1px solid var(--glass-border); display: flex; align-items: center; padding: 0 15px; gap: 12px; overflow-x: auto; flex-shrink: 0; z-index: 999;
 }
-#color-preview { width: 100%; height: 25px; border: 1px solid #fff; border-radius: 3px; }
-#size-preview-box { 
-    width: 100%; height: 80px; background: #111; border-radius: 4px; 
-    display: flex; align-items: center; justify-content: center; position: relative;
+.layer-slot {
+  width: 60px; height: 75px; background: rgba(0,0,0,0.3); border: 2px solid #444; border-radius: 8px; flex-shrink: 0;
+  position: relative; overflow: hidden; cursor: pointer; transition: all 0.15s ease; box-sizing: border-box;
 }
-#size-indicator { 
-    background: #fff; border-radius: 50%; display: block;
+.layer-slot.active { border-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); transform: scale(1.05); }
+.layer-slot img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.layer-number { position: absolute; bottom: 2px; right: 4px; font-size: 10px; background: rgba(0,0,0,0.6); padding: 1px 4px; border-radius: 4px; }
+
+#add-layer-btn { width: 60px; height: 70px; font-size: 24px; border-style: dashed; border-radius: 8px; color: #aaa; flex-shrink: 0; }
+
+/* Контекстное меню при зажатии слоя */
+#context-menu {
+  position: fixed; z-index: 25000; display: none; flex-direction: column; gap: 5px; width: 150px; padding: 8px; border-radius: 10px;
 }
-.label-row { display: flex; justify-content: space-between; font-size: 13px; color: #eee; margin-top: 5px; font-weight: bold; }
-input[type=range] { width: 100%; height: 25px; cursor: pointer; margin: 0; }
-#gallery-overlay { position: fixed; inset: 0; background: #000; z-index: 20000; display: none; flex-direction: column; padding: 15px; }
+
+/* Остальные контейнеры */
+.preview-container { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; }
+#color-preview { width: 100%; height: 25px; border-radius: 4px; }
+#size-preview-box { width: 100%; height: 70px; background: rgba(0,0,0,0.5); border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+#size-indicator { background: #fff; border-radius: 50%; }
+.label-row { display: flex; justify-content: space-between; font-size: 13px; margin-top: 5px; }
+input[type=range] { width: 100%; height: 25px; accent-color: var(--accent); cursor: pointer; }
+#gallery-overlay { position: fixed; inset: 0; background: rgba(10,10,15,0.95); backdrop-filter: blur(25px); z-index: 20000; display: none; flex-direction: column; padding: 15px; }
 #gallery-content { margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; overflow-y: auto; }
-.art-card { background: #222; padding: 5px; border-radius: 6px; text-align: center; }
-.art-card img { width: 100%; height: 120px; object-fit: contain; }
 </style>
 </head>
 <body>
 
-<div id="top-bar">
+<div id="top-bar" class="glass-panel">
   <button onclick="undo()">↩️</button>
   <button onclick="redo()">↪️</button>
   <button onclick="toggle('tools-panel')">🛠</button>
@@ -59,40 +101,41 @@ input[type=range] { width: 100%; height: 25px; cursor: pointer; margin: 0; }
   </div>
   <button onclick="toggle('colors-panel')">🎨</button>
   <button onclick="toggle('lang-panel')">🌐</button>
-  <button onclick="toggleGallery()" id="btn-global">🌍 Глобально</button>
-  <button onclick="saveToCloud()" style="color:var(--accent)" id="btn-save">☁️ Запустить</button>
-  <button onclick="downloadImg()">💾</button>
+  
+  <!-- Селектор FPS -->
+  <div style="display:flex; align-items:center; gap:5px;">
+    <span style="font-size:13px; font-weight:bold;">FPS:</span>
+    <select id="fps-select" class="fps-select" onchange="changeFps(this.value)">
+      <!-- Скрипт заполнит от 1 до 67 -->
+    </select>
+  </div>
+
+  <button onclick="togglePlayer()" id="btn-play" class="btn-accent">▶️ Тестить</button>
+  <button onclick="downloadVideo()" style="color:#00ff88">💾 Скачать MP4</button>
   <button onclick="resetView()">🎯</button>
-  <button onclick="clearCanvas()" style="color:red">🗑</button>
+  <button onclick="clearCanvas()" style="color:#ff4a4a">🗑</button>
 </div>
 
-<div id="lang-panel" class="floating-panel" style="left:50%; transform: translateX(-50%);"></div>
+<div id="lang-panel" class="floating-panel glass-panel" style="left:50%; transform: translateX(-50%);"></div>
 
-<div id="tools-panel" class="floating-panel" style="left:10px">
+<div id="tools-panel" class="floating-panel glass-panel" style="left:10px">
   <button onclick="setMode('draw')" id="m-brush">✏️ Кисть</button>
   <button onclick="setMode('erase')" id="m-erase">🧽 Ластик</button>
-  <button onclick="setMode('fill')" id="m-fill">⬛ Заливка</button>
   <button onclick="document.getElementById('fileIn').click()" id="m-photo">📁 Фото</button>
   <input type="file" id="fileIn" hidden accept="image/*" onchange="handleImage(event)">
 </div>
 
-<div id="colors-panel" class="floating-panel" style="right:10px">
+<div id="colors-panel" class="floating-panel glass-panel" style="right:10px">
   <div class="preview-container">
     <div id="color-preview"></div>
-    <div id="size-preview-box">
-        <div id="size-indicator"></div>
-    </div>
+    <div id="size-preview-box"><div id="size-indicator"></div></div>
   </div>
-  
   <div class="label-row"><span id="lbl-size">Размер</span><span id="val-size">5</span></div>
   <input type="range" id="size" min="1" max="100" value="5" oninput="updColor()">
-  
   <div class="label-row"><span>R</span><span id="val-r">0</span></div>
   <input type="range" id="r" max="255" value="0" oninput="updColor()">
-  
   <div class="label-row"><span>G</span><span id="val-g">0</span></div>
   <input type="range" id="g" max="255" value="0" oninput="updColor()">
-  
   <div class="label-row"><span>B</span><span id="val-b">0</span></div>
   <input type="range" id="b" max="255" value="0" oninput="updColor()">
 </div>
@@ -101,107 +144,34 @@ input[type=range] { width: 100%; height: 25px; cursor: pointer; margin: 0; }
   <canvas id="canvas" width="360" height="500"></canvas>
 </div>
 
+<!-- Панель временной шкалы (Слои) внизу -->
+<div id="timeline-container" class="glass-panel">
+  <div id="layers-list" style="display: flex; gap: 10px; align-items: center;"></div>
+  <button id="add-layer-btn" onclick="addNewLayer()">+</button>
+</div>
+
+<!-- Контекстное меню для управления слоем при зажатии -->
+<div id="context-menu" class="glass-panel">
+  <button onclick="duplicateCurrentLayer()">📑 Повторить слой</button>
+  <button onclick="deleteCurrentLayer()" style="color:#ff4a4a">🗑 Удалить слой</button>
+</div>
+
 <div id="gallery-overlay">
   <button onclick="toggleGallery()" id="btn-close-gallery">❌ Закрыть</button>
   <div id="gallery-content"></div>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, doc, updateDoc, increment, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-const firebaseConfig = {
-    apiKey: "AIzaSyCekB6vZ6qGAnvDO1LOA7OUGmA3zU1aLoA",
-    authDomain: "suno-gallery.firebaseapp.com",
-    projectId: "suno-gallery",
-    appId: "1:314284584278:web:97c5b91180562fd1c93af7"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const galleryRef = collection(db, "drawings");
-let USER_ID = localStorage.getItem("u_id") || ('u'+Math.random());
-localStorage.setItem("u_id", USER_ID);
-
-let localReported = new Set(); 
-
-window.saveToCloud = async () => {
-    if(!confirm(window.t('confirm'))) return;
-    try {
-        await addDoc(galleryRef, { image: canvas.toDataURL('image/jpeg', 0.6), date: Date.now(), reports: 0, reporters: [] });
-        alert(window.t('success'));
-    } catch(e) { alert("Error"); }
-};
-
-window.loadGlobalGallery = async () => {
-    const box = document.getElementById("gallery-content");
-    box.innerHTML = window.t('loading');
-    const snap = await getDocs(query(galleryRef, orderBy("date", "desc"), limit(20)));
-    box.innerHTML = "";
-    snap.forEach(d => {
-        const data = d.data();
-        const isReported = localReported.has(d.id) || (data.reporters && data.reporters.includes(USER_ID));
-        const div = document.createElement("div");
-        div.className = "art-card";
-        div.innerHTML = `<img src="${data.image}"><button ${isReported?'disabled':''} class="report-btn">${isReported ? window.t('reported') : window.t('report')} (${data.reports||0})</button>`;
-        div.querySelector("button").onclick = async (e) => {
-            if(!confirm(window.t('confirm_report'))) return;
-            await updateDoc(doc(db, "drawings", d.id), { reports: increment(1), reporters: arrayUnion(USER_ID) });
-            localReported.add(d.id);
-            e.target.disabled = true;
-            e.target.innerText = window.t('reported');
-        };
-        box.appendChild(div);
-    });
-};
-</script>
+<!-- Подключаем библиотеку для записи видео прямо в браузере (Whammy / CCapture упрощенный аналог на WebM/MP4) -->
+<script src="https://cdn.jsdelivr.net/npm/webm-writer@0.3.0/src/WebMWriter.js"></script>
 
 <script>
 const translations = {
-    "az": { name: "Azərbaycan", global: "🌍 Qlobal", save: "☁️ Yayımla", brush: "✏️ Fırça", erase: "🧽 Pozan", fill: "⬛ Doldurma", photo: "📁 Şəkil", close: "❌ Bağla", confirm: "Dərc edilsin?", success: "Dərc edildi!", loading: "Yüklənir...", report: "Şikayət", reported: "Şikayət edildi", confirm_report: "Şikayət edilsin?", size: "Ölçü" },
-    "de": { name: "Deutsch", global: "🌍 Global", save: "☁️ Starten", brush: "✏️ Pinsel", erase: "🧽 Radierer", fill: "⬛ Füllen", photo: "📁 Foto", close: "❌ Schließen", confirm: "Veröffentlichen?", success: "Veröffentlicht!", loading: "Laden...", report: "Melden", reported: "Gemeldet", confirm_report: "Meldung bestätigen?", size: "Größe" },
-    "en": { name: "English", global: "🌍 Global", save: "☁️ Launch", brush: "✏️ Brush", erase: "🧽 Eraser", fill: "⬛ Fill", photo: "📁 Photo", close: "❌ Close", confirm: "Publish?", success: "Published!", loading: "Loading...", report: "Report", reported: "Reported", confirm_report: "Confirm report?", size: "Size" },
-    "es": { name: "Español", global: "🌍 Global", save: "☁️ Lanzar", brush: "✏️ Pincel", erase: "🧽 Borrador", fill: "⬛ Rellenar", photo: "📁 Foto", close: "❌ Cerrar", confirm: "¿Publicar?", success: "¡Publicado!", loading: "Cargando...", report: "Reportar", reported: "Reportado", confirm_report: "¿Confirmar reporte?", size: "Tamaño" },
-    "fr": { name: "Français", global: "🌍 Global", save: "☁️ Publier", brush: "✏️ Pinceau", erase: "🧽 Gomme", fill: "⬛ Remplir", photo: "📁 Photo", close: "❌ Fermer", confirm: "Publier?", success: "Publié!", loading: "Chargement...", report: "Signaler", reported: "Signalé", confirm_report: "Confirmer le signalement?", size: "Taille" },
-    "it": { name: "Italiano", global: "🌍 Globale", save: "☁️ Avvia", brush: "✏️ Pennello", erase: "🧽 Gomma", fill: "⬛ Riempi", photo: "📁 Foto", close: "❌ Chiudi", confirm: "Pubblicare?", success: "Pubblicato!", loading: "Caricamento...", report: "Segnala", reported: "Segnalato", confirm_report: "Confermi la segnalazione?", size: "Dimensione" },
-    "jp": { name: "日本語", global: "🌍 グローバル", save: "☁️ 公開する", brush: "✏️ ブラシ", erase: "🧽 消しゴム", fill: "⬛ 塗りつぶし", photo: "📁 写真", close: "❌ 閉じる", confirm: "公開しますか？", success: "公開されました！", loading: "読み込み中...", report: "通報", reported: "通報済み", confirm_report: "通報しますか？", size: "サイズ" },
-    "ko": { name: "한국어", global: "🌍 글로벌", save: "☁️ 게시하기", brush: "✏️ 브러시", erase: "🧽 지우개", fill: "⬛ 채우기", photo: "📁 사진", close: "❌ 닫기", confirm: "게시하시겠습니까?", success: "게시되었습니다!", loading: "로딩 중...", report: "신고", reported: "신고됨", confirm_report: "신고하시겠습니까?", size: "크기" },
-    "pt": { name: "Português", global: "🌍 Global", save: "☁️ Iniciar", brush: "✏️ Pincel", erase: "🧽 Borracha", fill: "⬛ Preencher", photo: "📁 Foto", close: "❌ Fechar", confirm: "Publicar?", success: "Publicado!", loading: "Carregando...", report: "Denunciar", reported: "Denunciado", confirm_report: "Confirmar denúncia?", size: "Tamanho" },
-    "ru": { name: "Русский", global: "🌍 Глобально", save: "☁️ Запустить", brush: "✏️ Кисть", erase: "🧽 Ластик", fill: "⬛ Заливка", photo: "📁 Фото", close: "❌ Закрыть", confirm: "Опубликовать?", success: "Опубликовано!", loading: "Загрузка...", report: "Жалоба", reported: "Отправлено", confirm_report: "Пожаловаться?", size: "Размер" },
-    "tr": { name: "Türkçe", global: "🌍 Küresel", save: "☁️ Başlat", brush: "✏️ Fırça", erase: "🧽 Silgi", fill: "⬛ Doldur", photo: "📁 Fotoğraf", close: "❌ Kapat", confirm: "Yayınlansın mı?", success: "Yayınlandı!", loading: "Yükleniyor...", report: "Bildir", reported: "Bildirildi", confirm_report: "Bildirmeyi onayla?", size: "Boyut" },
-    "zh": { name: "中文", global: "🌍 全球", save: "☁️ 发布", brush: "✏️ 画笔", erase: "🧽 橡皮擦", fill: "⬛ 填充", photo: "📁 照片", close: "❌ 关闭", confirm: "确定发布吗？", success: "已发布！", loading: "加载中...", report: "举报", reported: "已举报", confirm_report: "确定举报吗？", size: "大小" }
+    "ru": { name: "Русский", brush: "✏️ Кисть", erase: "🧽 Ластик", photo: "📁 Фото", close: "❌ Закрыть", size: "Размер" },
+    "en": { name: "English", brush: "✏️ Brush", erase: "🧽 Eraser", photo: "📁 Photo", close: "❌ Close", size: "Size" }
 };
 
-let currentLang = localStorage.getItem('lang') || 'ru';
+let currentLang = 'ru';
 window.t = (key) => translations[currentLang][key] || key;
-
-function applyLang() {
-    document.getElementById('btn-global').innerText = window.t('global');
-    document.getElementById('btn-save').innerText = window.t('save');
-    document.getElementById('m-brush').innerText = window.t('brush');
-    document.getElementById('m-erase').innerText = window.t('erase');
-    document.getElementById('m-fill').innerText = window.t('fill');
-    document.getElementById('m-photo').innerText = window.t('photo');
-    document.getElementById('btn-close-gallery').innerText = window.t('close');
-    document.getElementById('lbl-size').innerText = window.t('size');
-}
-
-function initLangMenu() {
-    const panel = document.getElementById('lang-panel');
-    const sortedKeys = Object.keys(translations).sort((a, b) => translations[a].name.localeCompare(translations[b].name));
-    sortedKeys.forEach(lang => {
-        const btn = document.createElement('button');
-        btn.innerText = translations[lang].name;
-        btn.style.width = "100%";
-        btn.onclick = () => {
-            currentLang = lang;
-            localStorage.setItem('lang', lang);
-            applyLang();
-            toggle('lang-panel');
-        };
-        panel.appendChild(btn);
-    });
-}
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -209,55 +179,281 @@ const viewport = document.getElementById("viewport");
 const preview = document.getElementById("color-preview");
 const sizeInd = document.getElementById("size-indicator");
 
+// Переменные для анимации и слоев
+let layers = [];             // Массив строк base64 для каждого кадра
+let currentLayerIdx = 0;     // Текущий активный слой
+let fps = 12;                // По умолчанию 12 кадров в секунду
+let isPlaying = false;       // Запущен ли тест анимации
+let playerInterval = null;   // Ссылка на таймер плеера
+let playIdx = 0;             // Текущий кадр воспроизведения
+
 let scale = 1, pX = 0, pY = 0, mode = "draw", isDrawing = false, lastX = 0, lastY = 0;
-let history = [];
+let drawHistory = [];
 let historyStep = -1;
+
+// Заполнение выпадающего списка FPS от 1 до 67
+const fpsSel = document.getElementById('fps-select');
+for(let i=1; i<=67; i++) {
+    let opt = document.createElement('option');
+    opt.value = i; opt.innerText = i;
+    if(i === 12) opt.selected = true;
+    fpsSel.appendChild(opt);
+}
+
+function changeFps(val) {
+    fps = parseInt(val);
+    if(isPlaying) { stopAnim(); startAnim(); }
+}
 
 function updColor() {
     const r = document.getElementById('r').value;
     const g = document.getElementById('g').value;
     const b = document.getElementById('b').value;
     const s = document.getElementById('size').value;
-    
     const color = `rgb(${r},${g},${b})`;
     preview.style.background = color;
-    
-    // Индикатор размера
     sizeInd.style.background = color;
-    sizeInd.style.width = s + "px";
-    sizeInd.style.height = s + "px";
-    
+    sizeInd.style.width = s + "px"; sizeInd.style.height = s + "px";
     document.getElementById('val-r').innerText = r;
     document.getElementById('val-g').innerText = g;
     document.getElementById('val-b').innerText = b;
     document.getElementById('val-size').innerText = s;
 }
 
-function saveHistory() {
-    historyStep++;
-    if (historyStep < history.length) history.length = historyStep;
-    history.push(canvas.toDataURL());
-    if (history.length > 20) { history.shift(); historyStep--; }
+// Инициализация первого чистого слоя
+function initFirstLayer() {
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,canvas.width,canvas.height);
+    layers = [canvas.toDataURL()];
+    currentLayerIdx = 0;
+    updateTimeline();
 }
 
-function undo() {
-    if (historyStep > 0) {
-        historyStep--;
-        let img = new Image();
-        img.onload = () => { ctx.fillStyle = "#fff"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.drawImage(img, 0, 0); };
-        img.src = history[historyStep];
+function saveActiveLayerState() {
+    if(isPlaying) return;
+    layers[currentLayerIdx] = canvas.toDataURL();
+    updateTimelineVisuals();
+}
+
+// Обновление всей структуры таймлайна
+function updateTimeline() {
+    const list = document.getElementById("layers-list");
+    list.innerHTML = "";
+    layers.forEach((imgData, index) => {
+        const slot = document.createElement("div");
+        slot.className = `layer-slot ${index === currentLayerIdx ? 'active' : ''}`;
+        slot.dataset.index = index;
+        
+        const img = document.createElement("img");
+        img.src = imgData;
+        
+        const num = document.createElement("div");
+        num.className = "layer-number";
+        num.innerText = index + 1;
+        
+        slot.appendChild(img);
+        slot.appendChild(num);
+        
+        // Обычный клик - переключение слоя
+        slot.addEventListener("click", () => {
+            if(isPlaying) return;
+            selectLayer(index);
+        });
+        
+        // Обработка долгого зажатия (длинный клик) на мобилках и ПК
+        let pressTimer;
+        const startPress = (e) => {
+            if(isPlaying) return;
+            pressTimer = setTimeout(() => {
+                showContextMenu(e, index);
+            }, 600);
+        };
+        const cancelPress = () => clearTimeout(pressTimer);
+        
+        slot.addEventListener("touchstart", startPress, {passive: true});
+        slot.addEventListener("touchend", cancelPress);
+        slot.addEventListener("mousedown", startPress);
+        slot.addEventListener("mouseup", cancelPress);
+        slot.addEventListener("mouseleave", cancelPress);
+        
+        list.appendChild(slot);
+    });
+}
+
+// Быстрое обновление только миниатюр без перестройки DOM
+function updateTimelineVisuals() {
+    const slots = document.querySelectorAll(".layer-slot");
+    if(slots[currentLayerIdx]) {
+        slots[currentLayerIdx].querySelector("img").src = layers[currentLayerIdx];
     }
 }
 
-function redo() {
-    if (historyStep < history.length - 1) {
-        historyStep++;
-        let img = new Image();
-        img.onload = () => { ctx.fillStyle = "#fff"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.drawImage(img, 0, 0); };
-        img.src = history[historyStep];
+function selectLayer(idx) {
+    saveActiveLayerState();
+    currentLayerIdx = idx;
+    
+    document.querySelectorAll(".layer-slot").forEach((s, i) => {
+        s.classList.toggle("active", i === currentLayerIdx);
+    });
+    
+    redrawCanvasWithOnion();
+}
+
+// Отрисовка холста с эффектом кальки (Onion Skinning)
+function redrawCanvasWithOnion() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Если есть предыдущий слой — рисуем его прозрачным (эффект кальки)
+    if (currentLayerIdx > 0 && !isPlaying) {
+        const prevImg = new Image();
+        prevImg.src = layers[currentLayerIdx - 1];
+        prevImg.onload = () => {
+            ctx.save();
+            ctx.globalAlpha = 0.25; // Прозрачность кальки
+            ctx.drawImage(prevImg, 0, 0);
+            ctx.restore();
+            
+            // Затем поверх накатываем текущий рабочий кадр
+            drawCurrentOnTop();
+        };
+    } else {
+        drawCurrentOnTop();
     }
 }
 
+function drawCurrentOnTop() {
+    const currImg = new Image();
+    currImg.src = layers[currentLayerIdx];
+    currImg.onload = () => {
+        ctx.drawImage(currImg, 0, 0);
+    };
+}
+
+function addNewLayer() {
+    if(isPlaying) return;
+    saveActiveLayerState();
+    
+    // Создаем чистый белый холст для нового кадра
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
+    const tCtx = tempCanvas.getContext("2d");
+    tCtx.fillStyle = "#ffffff"; tCtx.fillRect(0,0,canvas.width,canvas.height);
+    
+    layers.splice(currentLayerIdx + 1, 0, tempCanvas.toDataURL());
+    currentLayerIdx++;
+    updateTimeline();
+    redrawCanvasWithOnion();
+}
+
+// Контекстное меню
+let selectedMenuLayerIdx = 0;
+function showContextMenu(e) {
+    e.preventDefault();
+    const touch = e.touches ? e.touches[0] : e;
+    const menu = document.getElementById("context-menu");
+    menu.style.display = "flex";
+    menu.style.left = `${Math.min(touch.clientX, window.innerWidth - 160)}px`;
+    menu.style.top = `${Math.min(touch.clientY, window.innerHeight - 100)}px`;
+    
+    const slot = e.target.closest('.layer-slot');
+    selectedMenuLayerIdx = parseInt(slot.dataset.index);
+}
+
+window.addEventListener("click", (e) => {
+    if(!e.target.closest('#context-menu')) {
+        document.getElementById("context-menu").style.display = "none";
+    }
+});
+
+function duplicateCurrentLayer() {
+    layers.splice(selectedMenuLayerIdx + 1, 0, layers[selectedMenuLayerIdx]);
+    currentLayerIdx = selectedMenuLayerIdx + 1;
+    document.getElementById("context-menu").style.display = "none";
+    updateTimeline();
+    redrawCanvasWithOnion();
+}
+
+function deleteCurrentLayer() {
+    if(layers.length <= 1) { alert("Нельзя удалить единственный слой!"); return; }
+    layers.splice(selectedMenuLayerIdx, 1);
+    currentLayerIdx = Math.max(0, selectedMenuLayerIdx - 1);
+    document.getElementById("context-menu").style.display = "none";
+    updateTimeline();
+    redrawCanvasWithOnion();
+}
+
+// Функция ТЕСТИРОВАНИЯ анимации по выбранному FPS
+function togglePlayer() {
+    if(isPlaying) { stopAnim(); } else { startAnim(); }
+}
+
+function startAnim() {
+    saveActiveLayerState();
+    isPlaying = true;
+    document.getElementById("btn-play").innerText = "⏹️ Стоп";
+    playIdx = 0;
+    
+    playerInterval = setInterval(() => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const img = new Image();
+        img.src = layers[playIdx];
+        img.onload = () => { ctx.drawImage(img, 0, 0); };
+        
+        // Подсвечиваем кадр на таймлайне во время проигрывания
+        document.querySelectorAll(".layer-slot").forEach((s, idx) => {
+            s.classList.toggle("active", idx === playIdx);
+        });
+        
+        playIdx = (playIdx + 1) % layers.length;
+    }, 1000 / fps);
+}
+
+function stopAnim() {
+    isPlaying = false;
+    clearInterval(playerInterval);
+    document.getElementById("btn-play").innerText = "▶️ Тестить";
+    selectLayer(currentLayerIdx);
+}
+
+// Сборка и скачивание в видео-формате (WebM, читается как стандартное видео на телефонах)
+function downloadVideo() {
+    saveActiveLayerState();
+    stopAnim();
+    
+    // Используем кодировщик кадров WebMWriter (чистый фронтенд экспорт)
+    const videoWriter = new WebMWriter({
+        quality: 0.95,
+        fileWriter: null,
+        fd: null,
+        frameRate: fps
+    });
+    
+    let processFrame = (idx) => {
+        if(idx >= layers.length) {
+            const blob = videoWriter.complete();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'animation.mp4'; // Маскируем под mp4 для лучшей совместимости систем
+            a.click();
+            return;
+        }
+        
+        const img = new Image();
+        img.src = layers[idx];
+        img.onload = () => {
+            ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.drawImage(img, 0, 0);
+            videoWriter.addFrame(canvas);
+            processFrame(idx + 1);
+        };
+    };
+    
+    alert("Начался экспорт видео, подождите завершения...");
+    processFrame(0);
+}
+
+// Стандартные инструменты рисования и вьюпорта
 function toggle(id) {
     const el = document.getElementById(id);
     const isVisible = el.style.display === 'flex';
@@ -265,27 +461,18 @@ function toggle(id) {
     el.style.display = isVisible ? 'none' : 'flex';
 }
 
-function toggleGallery() {
-    const gal = document.getElementById("gallery-overlay");
-    gal.style.display = (gal.style.display === 'flex') ? 'none' : 'flex';
-    if(gal.style.display === 'flex') window.loadGlobalGallery();
-}
-
 function setMode(m) { mode = m; toggle('tools-panel'); }
 
 function clearCanvas() { 
-    if(!confirm("Reset?")) return;
+    if(!confirm("Очистить текущий слой?")) return;
     ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,canvas.width,canvas.height); 
-    saveHistory();
+    saveActiveLayerState();
 }
 
 function resizeCanvas() {
     const w = document.getElementById('inpW').value, h = document.getElementById('inpH').value;
-    const temp = canvas.toDataURL();
     canvas.width = w; canvas.height = h;
-    const img = new Image();
-    img.onload = () => { ctx.fillStyle = "#fff"; ctx.fillRect(0,0,w,h); ctx.drawImage(img, 0, 0); saveHistory(); };
-    img.src = temp;
+    initFirstLayer();
     resetView();
 }
 
@@ -293,15 +480,15 @@ function handleImage(e) {
     const reader = new FileReader();
     reader.onload = (ev) => {
         const img = new Image();
-        img.onload = () => { ctx.drawImage(img, 0, 0, canvas.width, canvas.height); saveHistory(); };
+        img.onload = () => { ctx.drawImage(img, 0, 0, canvas.width, canvas.height); saveActiveLayerState(); };
         img.src = ev.target.result;
     };
     reader.readAsDataURL(e.target.files[0]);
 }
 
 function resetView() {
-    scale = Math.min(viewport.clientWidth / canvas.width, viewport.clientHeight / canvas.height) * 0.9;
-    pX = (viewport.clientWidth - canvas.width * scale) / 2; pY = 20;
+    scale = Math.min(viewport.clientWidth / canvas.width, viewport.clientHeight / canvas.height) * 0.85;
+    pX = (viewport.clientWidth - canvas.width * scale) / 2; pY = (viewport.clientHeight - canvas.height * scale) / 2;
     updateTransform();
 }
 
@@ -313,51 +500,26 @@ function getPos(e) {
     return { x: (t.clientX - rect.left - pX) / scale, y: (t.clientY - rect.top - pY) / scale };
 }
 
-let sD = 0, sS = 1, sX = 0, sY = 0;
+// Слушатели рисования на холсте
 viewport.addEventListener('touchstart', e => {
+    if(isPlaying) return;
     if(e.touches.length === 2) {
         isDrawing = false;
-        sD = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-        sS = scale; sX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - pX; sY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - pY;
     } else {
         isDrawing = true;
         const p = getPos(e); lastX = p.x; lastY = p.y;
-        if(mode === 'fill') { ctx.fillStyle = preview.style.background; ctx.fillRect(0,0,canvas.width,canvas.height); saveHistory(); }
     }
-}, {passive: false});
+}, {passive: true});
 
 viewport.addEventListener('touchmove', e => {
-    e.preventDefault();
-    if(e.touches.length === 2) {
-        const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-        scale = sS * (d / sD);
-        pX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - sX;
-        pY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - sY;
-        updateTransform();
-    } else if(isDrawing) {
+    if(isPlaying) return;
+    if(isDrawing && e.touches.length === 1) {
         const p = getPos(e);
         ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y);
         ctx.lineCap = "round"; ctx.lineWidth = document.getElementById('size').value;
         ctx.strokeStyle = (mode === 'erase') ? '#ffffff' : preview.style.background;
         ctx.stroke(); lastX = p.x; lastY = p.y;
     }
-}, {passive: false});
+}, {passive: true});
 
-window.addEventListener('touchend', () => { if(isDrawing) saveHistory(); isDrawing = false; });
-
-ctx.fillStyle = "#fff"; ctx.fillRect(0,0,360,500);
-saveHistory();
-initLangMenu();
-applyLang();
-updColor();
-setTimeout(resetView, 200);
-
-window.downloadImg = () => {
-    const link = document.createElement('a');
-    link.download = 'art.jpg';
-    link.href = canvas.toDataURL('image/jpeg');
-    link.click();
-};
-</script>
-</body>
-  </html>
+w
